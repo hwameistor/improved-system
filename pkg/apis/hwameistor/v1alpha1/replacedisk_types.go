@@ -51,6 +51,8 @@ type ReplaceDiskStatus struct {
 	OldDiskReplaceStatus ReplaceStatus `json:"oldDiskReplaceStatus,omitempty"`
 	// Init WaitDiskLVMRejoin WaitDataBackup Succeed
 	NewDiskReplaceStatus ReplaceStatus `json:"newDiskReplaceStatus,omitempty"`
+	// MigrateVolumeNames migrateVolumeNames of the replaced disk
+	MigrateVolumeNames []string `json:"volumeNames,omitempty"`
 }
 
 // ReplaceStatus defines the observed status of replacedDisk
@@ -66,11 +68,17 @@ const (
 	// ReplaceDisk_WaitDiskLVMRelease represents that the disk at present locates WaitDiskLVMRelease status.
 	ReplaceDisk_WaitDiskLVMRelease ReplaceStatus = "WaitDiskLVMRelease"
 
+	// ReplaceDisk_DiskLVMReleased represents that the disk at present locates DiskLVMReleased status.
+	ReplaceDisk_DiskLVMReleased ReplaceStatus = "DiskLVMReleased"
+
 	// ReplaceDisk_WaitDiskLVMRejoin represents that the disk at present locates WaitDiskLVMRejoin status.
 	ReplaceDisk_WaitDiskLVMRejoin ReplaceStatus = "WaitDiskLVMRejoin"
 
 	// ReplaceDisk_WaitDataBackup represents that the disk at present locates WaitDataBackup status.
 	ReplaceDisk_WaitDataBackup ReplaceStatus = "WaitDataBackup"
+
+	// ReplaceDisk_DataBackuped represents that the disk at present locates DataBackuped status.
+	ReplaceDisk_DataBackuped ReplaceStatus = "DataBackuped"
 
 	// ReplaceDisk_Succeed represents that the disk at present locates Succeed status.
 	ReplaceDisk_Succeed ReplaceStatus = "Succeed"

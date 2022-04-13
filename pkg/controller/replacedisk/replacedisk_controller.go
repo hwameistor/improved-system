@@ -4,12 +4,12 @@ import (
 	"context"
 	"github.com/hwameistor/improved-system/pkg/apis"
 	apisv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -34,7 +34,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileReplaceDisk{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileReplaceDisk{client: mgr.GetClient(), scheme: mgr.GetScheme(), Recorder: mgr.GetEventRecorderFor("replacedisk-controller")}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -73,6 +73,7 @@ type ReconcileReplaceDisk struct {
 	// that reads objects from the cache and writes to the apiserver
 	client             client.Client
 	scheme             *runtime.Scheme
+	Recorder           record.EventRecorder
 	replaceDiskManager apis.ReplaceDiskManager
 }
 
@@ -88,8 +89,8 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 	reqLogger.Info("Reconciling ReplaceDisk")
 
 	// Fetch the ReplaceDisk instance
-	instance := &apisv1alpha1.ReplaceDisk{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	replaceDisk := &apisv1alpha1.ReplaceDisk{}
+	err := r.client.Get(context.TODO(), request.NamespacedName, replaceDisk)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -101,7 +102,102 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	r.replaceDiskManager.ReconcileReplaceDisk(instance)
+	rdhandler := NewReplaceDiskHandler(r.client, r.Recorder)
+
+	switch replaceDisk.Spec.ReplaceDiskStage {
+	case "":
+		replaceDiskStatus := rdhandler.ReplaceDiskStatus()
+		if replaceDiskStatus.OldDiskReplaceStatus == "" && replaceDiskStatus.NewDiskReplaceStatus == "" {
+			rdhandler.UpdateReplaceDiskStage(apisv1alpha1.ReplaceDiskStage_Init)
+		}
+		return reconcile.Result{Requeue: true}, nil
+	case apisv1alpha1.ReplaceDiskStage_Init:
+		replaceDiskStatus := rdhandler.ReplaceDiskStatus()
+		if replaceDiskStatus.OldDiskReplaceStatus == "" && replaceDiskStatus.NewDiskReplaceStatus == "" {
+			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+				log.Error(err, "UpdateReplaceDiskStatus failed")
+				return reconcile.Result{Requeue: true}, nil
+			}
+		}
+	case apisv1alpha1.ReplaceDiskStage_WaitDiskReplaced:
+		replaceDiskStatus := rdhandler.ReplaceDiskStatus()
+		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
+			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDataRepair
+			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+				log.Error(err, "UpdateReplaceDiskStatus failed")
+				return reconcile.Result{Requeue: true}, nil
+			}
+		}
+
+		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDataRepair && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
+			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDiskLVMRelease
+			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+				log.Error(err, "UpdateReplaceDiskStatus failed")
+				return reconcile.Result{Requeue: true}, nil
+			}
+		}
+
+		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDiskLVMRelease && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
+			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
+			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+				log.Error(err, "UpdateReplaceDiskStatus failed")
+				return reconcile.Result{Requeue: true}, nil
+			}
+		}
+
+	case apisv1alpha1.ReplaceDiskStage_WaitSvcRestor:
+		replaceDiskStatus := rdhandler.ReplaceDiskStatus()
+		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
+			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
+			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDiskLVMRejoin
+			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+				log.Error(err, "UpdateReplaceDiskStatus failed")
+				return reconcile.Result{Requeue: true}, nil
+			}
+		}
+
+		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDiskLVMRejoin {
+			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
+			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDataBackup
+			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+				log.Error(err, "UpdateReplaceDiskStatus failed")
+				return reconcile.Result{Requeue: true}, nil
+			}
+		}
+
+		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDataBackup {
+			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
+			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DataBackuped
+			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+				log.Error(err, "UpdateReplaceDiskStatus failed")
+				return reconcile.Result{Requeue: true}, nil
+			}
+		}
+
+	case apisv1alpha1.ReplaceDiskStage_Succeed:
+		replaceDiskStatus := rdhandler.ReplaceDiskStatus()
+		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DataBackuped {
+			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
+			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Succeed
+			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+				log.Error(err, "UpdateReplaceDiskStatus failed")
+				return reconcile.Result{Requeue: true}, nil
+			}
+		}
+
+	case apisv1alpha1.ReplaceDiskStage_Failed:
+		return reconcile.Result{Requeue: true}, nil
+
+	default:
+		reqLogger.Error(err, "Invalid ReplaceDisk stage")
+	}
+
+	r.replaceDiskManager.ReconcileReplaceDisk(&rdhandler.rd)
 
 	return reconcile.Result{}, nil
 }
@@ -147,15 +243,11 @@ func (rdHandler *ReplaceDiskHandler) GetReplaceDisk(key client.ObjectKey) (*apis
 	return ldc, nil
 }
 
-// SetupClaimStatus
-func (rdHandler *ReplaceDiskHandler) SetupReplaceDiskStatus(status apisv1alpha1.ReplaceDiskStatus) {
+// UpdateReplaceDiskStatus
+func (rdHandler *ReplaceDiskHandler) UpdateReplaceDiskStatus(status apisv1alpha1.ReplaceDiskStatus) error {
 	rdHandler.rd.Status.OldDiskReplaceStatus = status.OldDiskReplaceStatus
 	rdHandler.rd.Status.NewDiskReplaceStatus = status.NewDiskReplaceStatus
-}
-
-// UpdateStatus
-func (rdHandler *ReplaceDiskHandler) UpdateReplaceDiskStatus() error {
-	return rdHandler.Update(context.Background(), &rdHandler.rd)
+	return rdHandler.Status().Update(context.Background(), &rdHandler.rd)
 }
 
 // Refresh
@@ -174,7 +266,30 @@ func (rdHandler *ReplaceDiskHandler) SetReplaceDisk(rd apisv1alpha1.ReplaceDisk)
 	return rdHandler
 }
 
+// SetReplaceDisk
+func (rdHandler *ReplaceDiskHandler) SetMigrateVolumeNames(volumeNames []string) *ReplaceDiskHandler {
+	rdHandler.rd.Status.MigrateVolumeNames = volumeNames
+	return rdHandler
+}
+
 // ReplaceDiskStage
 func (rdHandler *ReplaceDiskHandler) ReplaceDiskStage() apisv1alpha1.ReplaceDiskStage {
 	return rdHandler.rd.Spec.ReplaceDiskStage
+}
+
+// ReplaceDiskStage
+func (rdHandler *ReplaceDiskHandler) ReplaceDiskStatus() apisv1alpha1.ReplaceDiskStatus {
+	return rdHandler.rd.Status
+}
+
+// UpdateReplaceDiskStage
+func (rdHandler *ReplaceDiskHandler) UpdateReplaceDiskStage(stage apisv1alpha1.ReplaceDiskStage) error {
+	rd, err := rdHandler.GetReplaceDisk(client.ObjectKey{Name: rdHandler.rd.GetName(), Namespace: rdHandler.rd.GetNamespace()})
+	if err != nil {
+		return err
+	}
+	rd.Spec.ReplaceDiskStage = stage
+	rdHandler.SetReplaceDisk(*rd)
+
+	return nil
 }
