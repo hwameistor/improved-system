@@ -2,15 +2,22 @@ package manager
 
 import (
 	"context"
+	errs "errors"
 	"fmt"
+
 	apisv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
+	"github.com/hwameistor/improved-system/pkg/utils"
+	ldm "github.com/hwameistor/local-disk-manager/pkg/apis/hwameistor/v1alpha1"
+	"github.com/hwameistor/local-disk-manager/pkg/controller/localdisk"
 	lsapisv1alpha1 "github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1"
-
 	log "github.com/sirupsen/logrus"
-	"strings"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
+	"sync"
+	"time"
 )
 
 func (m *manager) startReplaceDiskTaskWorker(stopCh <-chan struct{}) {
@@ -60,54 +67,89 @@ func (m *manager) processReplaceDisk(replaceDiskNameSpacedName string) error {
 		return nil
 	}
 
+	rdhandler := m.rdhandler.SetReplaceDisk(*replaceDisk)
+
 	m.logger.Debugf("Required node name %s, current node name %s.", replaceDisk.Spec.NodeName, m.nodeName)
 	if replaceDisk.Spec.NodeName != m.nodeName {
 		return nil
 	}
 
-	switch replaceDisk.Spec.ReplaceDiskStage {
-	case "":
-		return m.processReplaceDiskSubmit(replaceDisk)
-	case apisv1alpha1.ReplaceDiskStage_Init:
-		return m.processReplaceDiskInit(replaceDisk)
-	case apisv1alpha1.ReplaceDiskStage_WaitDiskReplaced:
-		return m.processReplaceDiskWaitDiskReplaced(replaceDisk)
-	case apisv1alpha1.ReplaceDiskStage_WaitSvcRestor:
-		return m.processReplaceDiskWaitSvcRestor(replaceDisk)
-	case apisv1alpha1.ReplaceDiskStage_Succeed:
-		return m.processReplaceDiskSucceed(replaceDisk)
-	case apisv1alpha1.ReplaceDiskStage_Failed:
-		return m.processReplaceDiskFailed(replaceDisk)
-	default:
-		logCtx.Error("Invalid ReplaceDisk stage")
-	}
-
 	switch replaceDisk.Status.OldDiskReplaceStatus {
 	case apisv1alpha1.ReplaceDisk_Init:
-		return m.processOldReplaceDiskInit(replaceDisk)
+		return m.processOldReplaceDiskStatusInit(replaceDisk)
 	case apisv1alpha1.ReplaceDisk_WaitDataRepair:
-		return m.processOldReplaceDiskWaitDataRepair(replaceDisk)
+		err := m.processOldReplaceDiskStatusWaitDataRepair(replaceDisk)
+		if err != nil {
+			replaceDiskStatus := rdhandler.ReplaceDiskStatus()
+			if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDataRepair && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
+				replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+				replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+				if err := m.rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+					log.Error(err, "UpdateReplaceDiskStatus failed")
+					return err
+				}
+			}
+		}
+		return nil
 	case apisv1alpha1.ReplaceDisk_WaitDiskLVMRelease:
-		return m.processOldReplaceDiskWaitDiskLVMRelease(replaceDisk)
-	case apisv1alpha1.ReplaceDisk_Succeed:
-		return m.processOldReplaceDiskSucceed(replaceDisk)
+		err := m.processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk)
+		if err != nil {
+			replaceDiskStatus := rdhandler.ReplaceDiskStatus()
+			if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDiskLVMRelease && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
+				replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDataRepair
+				replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+				if err := m.rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+					log.Error(err, "UpdateReplaceDiskStatus failed")
+					return err
+				}
+			}
+		}
+		return nil
+	case apisv1alpha1.ReplaceDisk_DiskLVMReleased:
+		return m.processOldReplaceDiskStatusDiskLVMReleased(replaceDisk)
 	case apisv1alpha1.ReplaceDisk_Failed:
-		return m.processOldReplaceDiskFailed(replaceDisk)
+		return m.processOldReplaceDiskStatusFailed(replaceDisk)
 	default:
 		logCtx.Error("Invalid ReplaceDisk status")
 	}
 
 	switch replaceDisk.Status.NewDiskReplaceStatus {
 	case apisv1alpha1.ReplaceDisk_Init:
-		return m.processNewReplaceDiskInit(replaceDisk)
+		return m.processNewReplaceDiskStatusInit(replaceDisk)
 	case apisv1alpha1.ReplaceDisk_WaitDiskLVMRejoin:
-		return m.processNewReplaceDiskWaitDiskLVMRejoin(replaceDisk)
+		err := m.processNewReplaceDiskStatusWaitDiskLVMRejoin(replaceDisk)
+		if err != nil {
+			replaceDiskStatus := rdhandler.ReplaceDiskStatus()
+			if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDiskLVMRejoin {
+				replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
+				replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+				if err := m.rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+					log.Error(err, "UpdateReplaceDiskStatus failed")
+					return err
+				}
+			}
+		}
+		return nil
 	case apisv1alpha1.ReplaceDisk_WaitDataBackup:
-		return m.processNewReplaceDiskWaitDataBackup(replaceDisk)
+		err := m.processNewReplaceDiskStatusWaitDataBackup(replaceDisk)
+		if err != nil {
+			replaceDiskStatus := rdhandler.ReplaceDiskStatus()
+			if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDataBackup {
+				replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
+				replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDiskLVMRejoin
+				if err := m.rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+					log.Error(err, "UpdateReplaceDiskStatus failed")
+					return err
+				}
+			}
+		}
+		return nil
+	case apisv1alpha1.ReplaceDisk_DataBackuped:
+		return m.processNewReplaceDiskStatusDataBackuped(replaceDisk)
 	case apisv1alpha1.ReplaceDisk_Succeed:
-		return m.processNewReplaceDiskSucceed(replaceDisk)
+		return m.processNewReplaceDiskStatusSucceed(replaceDisk)
 	case apisv1alpha1.ReplaceDisk_Failed:
-		return m.processNewReplaceDiskFailed(replaceDisk)
+		return m.processNewReplaceDiskStatusFailed(replaceDisk)
 	default:
 		logCtx.Error("Invalid ReplaceDisk status")
 	}
@@ -115,67 +157,227 @@ func (m *manager) processReplaceDisk(replaceDiskNameSpacedName string) error {
 	return fmt.Errorf("Invalid ReplaceDisk status")
 }
 
-func (m *manager) processReplaceDiskSubmit(disk *apisv1alpha1.ReplaceDisk) error {
+func (m *manager) processOldReplaceDiskStatusInit(replaceDisk *apisv1alpha1.ReplaceDisk) error {
+	replaceDisk.Spec.ReplaceDiskStage = apisv1alpha1.ReplaceDiskStage_WaitDiskReplaced
+	return m.rdhandler.UpdateReplaceDiskStage(replaceDisk.Spec.ReplaceDiskStage)
+}
+
+func (m *manager) processOldReplaceDiskStatusWaitDataRepair(replaceDisk *apisv1alpha1.ReplaceDisk) error {
+	logCtx := m.logger.WithFields(log.Fields{"ReplaceDisk": replaceDisk.Name})
+
+	oldDiskName, err := m.getDiskNameByDiskUUID(replaceDisk.Spec.OldUUID, replaceDisk.Spec.NodeName)
+	if err != nil {
+		logCtx.Error("processOldReplaceDiskStatusWaitDataRepair getDiskNameByDiskUUID failed err = %v", err)
+		return err
+	}
+
+	localVolumeReplicasMap, err := m.getAllLocalVolumeAndReplicasMapOnDisk(oldDiskName, replaceDisk.Spec.NodeName)
+	if err != nil {
+		logCtx.Error("processOldReplaceDiskStatusWaitDataRepair getAllLocalVolumeAndReplicasMapOnDisk failed err = %v", err)
+		return err
+	}
+
+	var migrateVolumeNames []string
+	var localVolumeList = []lsapisv1alpha1.LocalVolume{}
+	for localVolumeName, _ := range localVolumeReplicasMap {
+		vol := &lsapisv1alpha1.LocalVolume{}
+		if err = m.apiClient.Get(context.TODO(), types.NamespacedName{Name: localVolumeName}, vol); err != nil {
+			if !errors.IsNotFound(err) {
+				log.Errorf("Failed to get Volume from cache, retry it later ...")
+				return err
+			}
+			log.Printf("Not found the Volume from cache, should be deleted already.")
+			return nil
+		}
+		err = m.createMigrateTaskByLocalVolume(*vol)
+		if err != nil {
+			log.Error(err, "createMigrateTaskByLocalVolume failed")
+			return err
+		}
+		migrateVolumeNames = append(migrateVolumeNames, vol.Name)
+		m.rdhandler.SetMigrateVolumeNames(migrateVolumeNames)
+		localVolumeList = append(localVolumeList, *vol)
+	}
+
+	err = m.waitMigrateTaskByLocalVolumeDone(localVolumeList)
+	return err
+}
+
+func (m *manager) createMigrateTaskByLocalVolume(vol lsapisv1alpha1.LocalVolume) error {
+	localVolumeMigrate, err := m.migrateCtr.ConstructLocalVolumeMigrate(vol)
+	err = m.migrateCtr.CreateLocalVolumeMigrate(*localVolumeMigrate)
+	if err != nil {
+		log.Error(err, "CreateLocalVolumeMigrate failed")
+		return err
+	}
 	return nil
 }
 
-func (m *manager) processReplaceDiskInit(disk *apisv1alpha1.ReplaceDisk) error {
+// 统计数据迁移情况
+func (m *manager) waitMigrateTaskByLocalVolumeDone(volList []lsapisv1alpha1.LocalVolume) error {
+	var wg sync.WaitGroup
+	for _, vol := range volList {
+		vol := vol
+		wg.Add(1)
+		go func() {
+			for {
+				migrateStatus, err := m.migrateCtr.GetLocalVolumeMigrateStatusByLocalVolume(vol)
+				if err != nil {
+					log.Error(err, "waitMigrateTaskByLocalVolumeDone GetLocalVolumeMigrateStatusByLocalVolume failed")
+					return
+				}
+				if migrateStatus.State == lsapisv1alpha1.OperationStateSubmitted || migrateStatus.State == lsapisv1alpha1.OperationStateInProgress {
+					time.Sleep(2 * time.Second)
+					continue
+				}
+				break
+			}
+			wg.Done()
+			return
+		}()
+	}
+	wg.Wait()
+
 	return nil
 }
 
-func (m *manager) processReplaceDiskWaitDiskReplaced(disk *apisv1alpha1.ReplaceDisk) error {
+func (m *manager) getLocalDiskByDiskName(diskName, nodeName string) (ldm.LocalDisk, error) {
+	// replacedDiskName e.g.(/dev/sdb -> sdb)
+	var replacedDiskName string
+	if strings.HasPrefix(diskName, "/dev") {
+		replacedDiskName = strings.Replace(diskName, "/dev/", "", 1)
+	}
+
+	// ConvertNodeName e.g.(10.23.10.12 => 10-23-10-12)
+	localDiskName := utils.ConvertNodeName(nodeName) + "-" + replacedDiskName
+	key := client.ObjectKey{Name: localDiskName, Namespace: ""}
+	localDisk, err := m.localDiskController.GetLocalDisk(key)
+	if err != nil {
+		m.logger.WithError(err).Error("getLocalDiskByDiskName: Failed to GetLocalDisk")
+		return localDisk, err
+	}
+	return localDisk, nil
+}
+
+func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *apisv1alpha1.ReplaceDisk) error {
+	diskUuid := replaceDisk.Spec.OldUUID
+	nodeName := replaceDisk.Spec.NodeName
+	diskName, err := m.getDiskNameByDiskUUID(diskUuid, nodeName)
+	if err != nil {
+		m.logger.WithError(err).Error("processOldReplaceDiskStatusWaitDiskLVMRelease: Failed to getDiskNameByDiskUUID")
+		return err
+	}
+
+	localDisk, err := m.getLocalDiskByDiskName(diskName, nodeName)
+	if err != nil {
+		m.logger.WithError(err).Error("processOldReplaceDiskStatusWaitDiskLVMRelease: Failed to getLocalDiskByDiskName")
+		return err
+	}
+
+	diskType := localDisk.Spec.DiskAttributes.Type
+	volGroupName, err := utils.GetPoolNameAccordingDiskType(diskType)
+	if err != nil {
+		m.logger.WithError(err).Error("processOldReplaceDiskStatusWaitDiskLVMRelease: Failed to GetPoolNameAccordingDiskType")
+		return err
+	}
+
+	options := []string{}
+	err = m.cmdExec.vgreduce(volGroupName, diskName, options)
+	if err != nil {
+		m.logger.WithError(err).Error("processOldReplaceDiskStatusWaitDiskLVMRelease: Failed to vgreduce")
+		return err
+	}
 	return nil
 }
 
-func (m *manager) processReplaceDiskWaitSvcRestor(disk *apisv1alpha1.ReplaceDisk) error {
+func (m manager) processOldReplaceDiskStatusDiskLVMReleased(replaceDisk *apisv1alpha1.ReplaceDisk) error {
+	replaceDisk.Spec.ReplaceDiskStage = apisv1alpha1.ReplaceDiskStage_WaitSvcRestor
+	return m.rdhandler.UpdateReplaceDiskStage(replaceDisk.Spec.ReplaceDiskStage)
 	return nil
 }
 
-func (m *manager) processReplaceDiskSucceed(disk *apisv1alpha1.ReplaceDisk) error {
+func (m *manager) processOldReplaceDiskStatusFailed(replaceDisk *apisv1alpha1.ReplaceDisk) error {
 	return nil
 }
 
-func (m *manager) processReplaceDiskFailed(disk *apisv1alpha1.ReplaceDisk) error {
+func (m *manager) processNewReplaceDiskStatusInit(replaceDisk *apisv1alpha1.ReplaceDisk) error {
 	return nil
 }
 
-func (m *manager) processOldReplaceDiskInit(disk *apisv1alpha1.ReplaceDisk) error {
+func (m *manager) processNewReplaceDiskStatusWaitDiskLVMRejoin(replaceDisk *apisv1alpha1.ReplaceDisk) error {
+	err := m.waitDiskLVMRejoinDone(replaceDisk)
+	if err != nil {
+		m.logger.WithError(err).Error("processNewReplaceDiskStatusWaitDiskLVMRejoin: Failed to waitDiskLVMRejoinDone")
+		return err
+	}
 	return nil
 }
 
-func (m *manager) processOldReplaceDiskWaitDataRepair(disk *apisv1alpha1.ReplaceDisk) error {
+func (m *manager) waitDiskLVMRejoinDone(replaceDisk *apisv1alpha1.ReplaceDisk) error {
+	diskUuid := replaceDisk.Spec.NewUUID
+	nodeName := replaceDisk.Spec.NodeName
+	diskName, err := m.getDiskNameByDiskUUID(diskUuid, nodeName)
+	if err != nil {
+		m.logger.WithError(err).Error("waitDiskLVMRejoinDone: Failed to getDiskNameByDiskUUID")
+		return err
+	}
+
+	for {
+		localDisk, err := m.getLocalDiskByDiskName(diskName, nodeName)
+		if err != nil {
+			m.logger.WithError(err).Error("waitDiskLVMRejoinDone: Failed to getLocalDiskByDiskName")
+			return err
+		}
+		if localDisk.Spec.ClaimRef != nil {
+			break
+		}
+	}
 	return nil
 }
 
-func (m *manager) processOldReplaceDiskWaitDiskLVMRelease(disk *apisv1alpha1.ReplaceDisk) error {
+func (m *manager) processNewReplaceDiskStatusWaitDataBackup(replaceDisk *apisv1alpha1.ReplaceDisk) error {
+	if replaceDisk == nil {
+		return errs.New("processNewReplaceDiskStatusWaitDataBackup replaceDisk is nil")
+	}
+	migrateLocalVolumes := replaceDisk.Status.MigrateVolumeNames
+	var localVolumeList = []lsapisv1alpha1.LocalVolume{}
+	for _, localVolumeName := range migrateLocalVolumes {
+		vol := &lsapisv1alpha1.LocalVolume{}
+		if err := m.apiClient.Get(context.TODO(), types.NamespacedName{Name: localVolumeName}, vol); err != nil {
+			if !errors.IsNotFound(err) {
+				log.Errorf("Failed to get Volume from cache, retry it later ...")
+				return err
+			}
+			log.Printf("Not found the Volume from cache, should be deleted already.")
+			return nil
+		}
+		err := m.createMigrateTaskByLocalVolume(*vol)
+		if err != nil {
+			log.Error(err, "processNewReplaceDiskStatusWaitDataBackup: createMigrateTaskByLocalVolume failed")
+			return err
+		}
+		localVolumeList = append(localVolumeList, *vol)
+	}
+
+	err := m.waitMigrateTaskByLocalVolumeDone(localVolumeList)
+	if err != nil {
+		m.logger.WithError(err).Error("processNewReplaceDiskStatusWaitDataBackup: Failed to waitMigrateTaskByLocalVolumeDone")
+		return err
+	}
 	return nil
 }
 
-func (m *manager) processOldReplaceDiskSucceed(disk *apisv1alpha1.ReplaceDisk) error {
+func (m manager) processNewReplaceDiskStatusDataBackuped(replaceDisk *apisv1alpha1.ReplaceDisk) error {
+	replaceDisk.Spec.ReplaceDiskStage = apisv1alpha1.ReplaceDiskStage_Succeed
+	return m.rdhandler.UpdateReplaceDiskStage(replaceDisk.Spec.ReplaceDiskStage)
 	return nil
 }
 
-func (m *manager) processOldReplaceDiskFailed(disk *apisv1alpha1.ReplaceDisk) error {
+func (m *manager) processNewReplaceDiskStatusSucceed(replaceDisk *apisv1alpha1.ReplaceDisk) error {
 	return nil
 }
 
-func (m *manager) processNewReplaceDiskInit(disk *apisv1alpha1.ReplaceDisk) error {
-	return nil
-}
-
-func (m *manager) processNewReplaceDiskWaitDiskLVMRejoin(disk *apisv1alpha1.ReplaceDisk) error {
-	return nil
-}
-
-func (m *manager) processNewReplaceDiskWaitDataBackup(disk *apisv1alpha1.ReplaceDisk) error {
-	return nil
-}
-
-func (m *manager) processNewReplaceDiskSucceed(disk *apisv1alpha1.ReplaceDisk) error {
-	return nil
-}
-
-func (m *manager) processNewReplaceDiskFailed(disk *apisv1alpha1.ReplaceDisk) error {
+func (m *manager) processNewReplaceDiskStatusFailed(replaceDisk *apisv1alpha1.ReplaceDisk) error {
 	return nil
 }
 
@@ -189,7 +391,7 @@ func (m *manager) getAllLocalVolumeAndReplicasMapOnDisk(diskName, nodeName strin
 		return nil, err
 	}
 
-	existingLocalVolumeReplicasMap := make(map[string][]*lsapisv1alpha1.LocalVolumeReplica)
+	localVolumeReplicasMap := make(map[string][]*lsapisv1alpha1.LocalVolumeReplica)
 	for _, replica := range replicaList.Items {
 		if replica.Spec.NodeName != nodeName {
 			continue
@@ -197,20 +399,20 @@ func (m *manager) getAllLocalVolumeAndReplicasMapOnDisk(diskName, nodeName strin
 		for _, dName := range replica.Status.Disks {
 			// start with /dev/sdx
 			if dName == diskName {
-				replicas, ok := existingLocalVolumeReplicasMap[replica.Spec.VolumeName]
+				replicas, ok := localVolumeReplicasMap[replica.Spec.VolumeName]
 				if !ok {
 					replicaList := []*lsapisv1alpha1.LocalVolumeReplica{}
 					replicaList = append(replicaList, &replica)
-					existingLocalVolumeReplicasMap[replica.Spec.VolumeName] = replicaList
+					localVolumeReplicasMap[replica.Spec.VolumeName] = replicaList
 				} else {
 					replicas = append(replicas, &replica)
-					existingLocalVolumeReplicasMap[replica.Spec.VolumeName] = replicas
+					localVolumeReplicasMap[replica.Spec.VolumeName] = replicas
 				}
 			}
 		}
 	}
 
-	return existingLocalVolumeReplicasMap, nil
+	return localVolumeReplicasMap, nil
 }
 
 func (m *manager) getReplicasForVolume(volName string) ([]*lsapisv1alpha1.LocalVolumeReplica, error) {
@@ -226,6 +428,19 @@ func (m *manager) getReplicasForVolume(volName string) ([]*lsapisv1alpha1.LocalV
 		}
 	}
 	return replicas, nil
+}
+
+func (m *manager) isLocalVolumeReplicasAllNotReady(volName string) (bool, error) {
+	volumeRelicas, err := m.getReplicasForVolume(volName)
+	if err != nil {
+		return true, err
+	}
+	notReadyFlag, err := m.isReplicasForVolumeAllNotReady(volumeRelicas)
+	if err != nil {
+		return true, err
+	}
+
+	return notReadyFlag, nil
 }
 
 func (m *manager) isReplicasForVolumeAllNotReady(replicas []*lsapisv1alpha1.LocalVolumeReplica) (bool, error) {
@@ -273,7 +488,84 @@ func (m *manager) isReplicaOnDiskMaster(replica *lsapisv1alpha1.LocalVolumeRepli
 	return false, nil
 }
 
+func (m *manager) CheckVolumeInReplaceDiskTask(nodeName, volName string) (bool, error) {
+	allLocalVolumeReplicasMap, err := m.getAllLocalVolumesAndReplicasInRepalceDiskTask(nodeName)
+	if err != nil {
+		m.logger.WithError(err).Error("Failed to getAllLocalVolumesAndReplicasInRepalceDiskTask")
+		return false, err
+	}
+	if _, ok := allLocalVolumeReplicasMap[volName]; ok {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (m *manager) migrateLocalVolumeReplica(localVolumeReplicaName, nodeName string) error {
 
 	return nil
+}
+
+func (m *manager) getAllLocalVolumesAndReplicasInRepalceDiskTask(nodeName string) (map[string][]*lsapisv1alpha1.LocalVolumeReplica, error) {
+
+	diskNames, err := m.getDiskNamesInRepalceDiskTask(nodeName)
+	if err != nil {
+		m.logger.WithError(err).Error("Failed to get ReplaceDiskList")
+		return nil, err
+	}
+
+	var allLocalVolumeReplicasMap = make(map[string][]*lsapisv1alpha1.LocalVolumeReplica)
+	for _, diskName := range diskNames {
+		localVolumeReplicasMap, err := m.getAllLocalVolumeAndReplicasMapOnDisk(diskName, nodeName)
+		if err != nil {
+			m.logger.WithError(err).Error("Failed to getAllLocalVolumeAndReplicasMapOnDisk")
+			return nil, err
+		}
+		allLocalVolumeReplicasMap = utils.MergeLocalVolumeReplicaMap(allLocalVolumeReplicasMap, localVolumeReplicasMap)
+	}
+
+	return allLocalVolumeReplicasMap, nil
+}
+
+func (m *manager) getDiskNamesInRepalceDiskTask(nodeName string) ([]string, error) {
+	replaceDiskList, err := m.rdhandler.ListReplaceDisk()
+	if err != nil {
+		m.logger.WithError(err).Error("Failed to get ReplaceDiskList")
+		return nil, err
+	}
+
+	var diskNames []string
+	for _, replacedisk := range replaceDiskList.Items {
+		if replacedisk.Spec.NodeName == nodeName {
+			diskUuid := replacedisk.Spec.OldUUID
+			diskName, err := m.getDiskNameByDiskUUID(diskUuid, nodeName)
+			if err != nil {
+				m.logger.WithError(err).Error("Failed to getDiskNameByDiskUUID")
+				return nil, err
+			}
+			diskNames = append(diskNames, diskName)
+		}
+	}
+
+	return diskNames, nil
+}
+
+// start with /dev/sdx
+func (m *manager) getDiskNameByDiskUUID(diskUUID, nodeName string) (string, error) {
+	var recorder record.EventRecorder
+	ldHandler := localdisk.NewLocalDiskHandler(m.apiClient, recorder)
+	ldList, err := ldHandler.ListLocalDisk()
+	if err != nil {
+		return "", err
+	}
+	var diskName string
+	for _, ld := range ldList.Items {
+		if ld.Spec.NodeName == nodeName {
+			if ld.Spec.UUID == diskUUID {
+				diskName = ld.Spec.DevicePath
+				break
+			}
+		}
+	}
+
+	return diskName, nil
 }
