@@ -4,6 +4,9 @@ import (
 	"context"
 	errs "errors"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
 
 	apisv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
 	"github.com/hwameistor/improved-system/pkg/utils"
@@ -11,13 +14,11 @@ import (
 	"github.com/hwameistor/local-disk-manager/pkg/controller/localdisk"
 	lsapisv1alpha1 "github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1"
 	log "github.com/sirupsen/logrus"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
-	"sync"
-	"time"
 )
 
 func (m *manager) startReplaceDiskTaskWorker(stopCh <-chan struct{}) {
@@ -111,6 +112,12 @@ func (m *manager) processReplaceDisk(replaceDiskNameSpacedName string) error {
 		return m.processOldReplaceDiskStatusFailed(replaceDisk)
 	default:
 		logCtx.Error("Invalid ReplaceDisk status")
+		return errs.New("Invalid ReplaceDisk status")
+	}
+
+	if replaceDisk.Status.OldDiskReplaceStatus != apisv1alpha1.ReplaceDisk_DiskLVMReleased {
+		logCtx.Error("Invalid ReplaceDisk OldDiskReplaceStatus,replaceDisk.Status.OldDiskReplaceStatus = %v", replaceDisk.Status.OldDiskReplaceStatus)
+		return errs.New("Invalid ReplaceDisk OldDiskReplaceStatus")
 	}
 
 	switch replaceDisk.Status.NewDiskReplaceStatus {

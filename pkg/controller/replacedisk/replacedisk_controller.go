@@ -103,16 +103,15 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	rdhandler := NewReplaceDiskHandler(r.client, r.Recorder)
+	replaceDiskStatus := rdhandler.ReplaceDiskStatus()
 
 	switch replaceDisk.Spec.ReplaceDiskStage {
 	case "":
-		replaceDiskStatus := rdhandler.ReplaceDiskStatus()
 		if replaceDiskStatus.OldDiskReplaceStatus == "" && replaceDiskStatus.NewDiskReplaceStatus == "" {
 			rdhandler.UpdateReplaceDiskStage(apisv1alpha1.ReplaceDiskStage_Init)
 		}
 		return reconcile.Result{Requeue: true}, nil
 	case apisv1alpha1.ReplaceDiskStage_Init:
-		replaceDiskStatus := rdhandler.ReplaceDiskStatus()
 		if replaceDiskStatus.OldDiskReplaceStatus == "" && replaceDiskStatus.NewDiskReplaceStatus == "" {
 			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
 			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
@@ -122,7 +121,6 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 			}
 		}
 	case apisv1alpha1.ReplaceDiskStage_WaitDiskReplaced:
-		replaceDiskStatus := rdhandler.ReplaceDiskStatus()
 		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
 			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDataRepair
 			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
@@ -151,7 +149,6 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 		}
 
 	case apisv1alpha1.ReplaceDiskStage_WaitSvcRestor:
-		replaceDiskStatus := rdhandler.ReplaceDiskStatus()
 		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
 			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
 			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDiskLVMRejoin
@@ -180,7 +177,6 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 		}
 
 	case apisv1alpha1.ReplaceDiskStage_Succeed:
-		replaceDiskStatus := rdhandler.ReplaceDiskStatus()
 		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DataBackuped {
 			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
 			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Succeed
