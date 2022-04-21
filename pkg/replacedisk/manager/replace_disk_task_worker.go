@@ -563,6 +563,26 @@ func (m *manager) getDiskNamesInRepalceDiskTask(nodeName string) ([]string, erro
 	return diskNames, nil
 }
 
+func (m *manager) CheckLocalDiskInReplaceDiskTaskByUUID(nodeName, diskUuid string) (bool, error) {
+	replaceDiskList, err := m.rdhandler.ListReplaceDisk()
+	if err != nil {
+		m.logger.WithError(err).Error("Failed to get ReplaceDiskList")
+		return false, err
+	}
+
+	for _, replacedisk := range replaceDiskList.Items {
+		if replacedisk.Spec.NodeName == nodeName {
+			oldDiskUuid := replacedisk.Spec.OldUUID
+			newDiskUuid := replacedisk.Spec.NewUUID
+			if diskUuid == oldDiskUuid || diskUuid == newDiskUuid {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
 // start with /dev/sdx
 func (m *manager) getDiskNameByDiskUUID(diskUUID, nodeName string) (string, error) {
 	var recorder record.EventRecorder

@@ -6,8 +6,6 @@ import (
 	apisv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
 	replacediskmanager "github.com/hwameistor/improved-system/pkg/replacedisk/manager"
 	logr "github.com/sirupsen/logrus"
-	"os"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,11 +34,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	replaceDiskManager, err := replacediskmanager.New(mgr)
-	if err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
+	replaceDiskManager, _ := replacediskmanager.New(mgr)
 	return &ReconcileReplaceDisk{client: mgr.GetClient(), scheme: mgr.GetScheme(),
 		Recorder:           mgr.GetEventRecorderFor("replacedisk-controller"),
 		replaceDiskManager: replaceDiskManager}
