@@ -1,0 +1,14 @@
+apiVersion: hwameistor.io/v1alpha1
+kind: ReplaceDisk
+metadata:
+  name: replacedisk-sample
+spec:
+  oldUuid: e614da151356ed33712050235306e644
+  newUuid: 94a9807d86f55d6b3f7056c9ac31d95b
+  nodeName: 172-30-40-60
+  replaceDiskStage: ""
+status:
+  oldDiskReplaceStatus: WaitDataRepair
+  newDiskReplaceStatus: Init
+  volumeNames:
+    - pvc-1e6ce654-ecbb-48ef-8696-8ac01b1fde82
