@@ -2,13 +2,17 @@ package apis
 
 import (
 	apisv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
+	"github.com/hwameistor/improved-system/pkg/common"
 )
 
 // ReplaceDiskManager interface
 type ReplaceDiskManager interface {
 	Run(stopCh <-chan struct{})
+	ReplaceDiskNodeManager() ReplaceDiskNodeManager
+}
 
+// ReplaceDiskNodeManager interface
+type ReplaceDiskNodeManager interface {
 	ReconcileReplaceDisk(replaceDisk *apisv1alpha1.ReplaceDisk)
-
-	CheckVolumeInReplaceDiskTask(nodeName, volName string) (bool, error)
+	ReplaceDiskTaskQueue() *common.TaskQueue
 }

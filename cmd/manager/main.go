@@ -10,6 +10,7 @@ import (
 	"path"
 	"runtime"
 	"strings"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -21,7 +22,6 @@ import (
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
-	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
@@ -37,8 +37,9 @@ import (
 
 // Change below variables to serve metrics on different host or port.
 var (
+	warmupPeriod              = 5 * time.Second
 	metricsHost               = "0.0.0.0"
-	metricsPort         int32 = 8383
+	metricsPort         int32 = 8384
 	operatorMetricsPort int32 = 8686
 )
 var log = logf.Log.WithName("cmd")
@@ -106,33 +107,41 @@ func main() {
 		os.Exit(1)
 	}
 
-	replaceDiskManager, err := replacediskmanager.New(mgr.GetClient())
-	if err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
-
-	stopCh := signals.SetupSignalHandler()
-	replaceDiskManager.Run(stopCh)
-
-	ctx := context.TODO()
+	//ctx := context.TODO()
 	// Become the leader before proceeding
-	err = leader.Become(ctx, "improved-system-lock")
-	if err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
+	//err = leader.Become(ctx, "improved-system-lock")
+	//if err != nil {
+	//	log.Error(err, "")
+	//	os.Exit(1)
+	//}
 
 	// Add the Metrics Service
-	addMetrics(ctx, cfg)
+	//addMetrics(ctx, cfg)
 
-	log.Info("Starting the Cmd.")
+	stopCh := signals.SetupSignalHandler()
+	// Start the resource controllers manager
+	go func() {
+		log.Info("Starting the manager of all local storage resources.")
+		if err := mgr.Start(stopCh); err != nil {
+			logr.WithError(err).Error("Failed to run resources manager")
+			os.Exit(1)
+		}
+	}()
 
-	// Start the Cmd
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-		log.Error(err, "Manager exited non-zero")
+	time.Sleep(warmupPeriod)
+
+	log.Info("Starting to run improved system")
+	replaceDiskManager, err := replacediskmanager.New(mgr)
+	if err != nil {
+		log.Error(err, "")
 		os.Exit(1)
 	}
+	replaceDiskManager.Run(stopCh)
+
+	// This will run forever until channel receives stop signal
+	<-stopCh
+	log.Info("Stopped improved system")
+
 }
 
 // addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using

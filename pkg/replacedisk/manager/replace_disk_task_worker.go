@@ -22,28 +22,30 @@ import (
 )
 
 func (m *manager) startReplaceDiskTaskWorker(stopCh <-chan struct{}) {
-
 	m.logger.Debug("ReplaceDisk Worker is working now")
+	m.logger.Debug("startReplaceDiskTaskWorker m.replaceDiskTaskQueue = %v", m.ReplaceDiskNodeManager().ReplaceDiskTaskQueue())
 	go func() {
 		for {
-			task, shutdown := m.replaceDiskTaskQueue.Get()
+			//m.replaceDiskTaskQueue.Add("hwameistor/replacedisk-sample")
+			task, shutdown := m.ReplaceDiskNodeManager().ReplaceDiskTaskQueue().Get()
+			m.logger.Debug("startReplaceDiskTaskWorker task = %v", task)
 			if shutdown {
 				m.logger.WithFields(log.Fields{"task": task}).Debug("Stop the ReplaceDisk worker")
 				break
 			}
 			if err := m.processReplaceDisk(task); err != nil {
 				m.logger.WithFields(log.Fields{"task": task, "error": err.Error()}).Error("Failed to process ReplaceDisk task, retry later")
-				m.replaceDiskTaskQueue.AddRateLimited(task)
+				m.ReplaceDiskNodeManager().ReplaceDiskTaskQueue().AddRateLimited(task)
 			} else {
 				m.logger.WithFields(log.Fields{"task": task}).Debug("Completed a ReplaceDisk task.")
-				m.replaceDiskTaskQueue.Forget(task)
+				m.ReplaceDiskNodeManager().ReplaceDiskTaskQueue().Forget(task)
 			}
-			m.replaceDiskTaskQueue.Done(task)
+			m.ReplaceDiskNodeManager().ReplaceDiskTaskQueue().Done(task)
 		}
 	}()
 
 	<-stopCh
-	m.replaceDiskTaskQueue.Shutdown()
+	m.ReplaceDiskNodeManager().ReplaceDiskTaskQueue().Shutdown()
 }
 
 func (m *manager) processReplaceDisk(replaceDiskNameSpacedName string) error {
@@ -69,12 +71,14 @@ func (m *manager) processReplaceDisk(replaceDiskNameSpacedName string) error {
 	}
 
 	rdhandler := m.rdhandler.SetReplaceDisk(*replaceDisk)
+	m.rdhandler = rdhandler
 
 	m.logger.Debugf("Required node name %s, current node name %s.", replaceDisk.Spec.NodeName, m.nodeName)
 	if replaceDisk.Spec.NodeName != m.nodeName {
 		return nil
 	}
 
+	m.logger.Debugf("processReplaceDisk replaceDisk.Status %v.", replaceDisk.Status)
 	switch replaceDisk.Status.OldDiskReplaceStatus {
 	case apisv1alpha1.ReplaceDisk_Init:
 		return m.processOldReplaceDiskStatusInit(replaceDisk)
@@ -107,7 +111,9 @@ func (m *manager) processReplaceDisk(replaceDiskNameSpacedName string) error {
 		}
 		return nil
 	case apisv1alpha1.ReplaceDisk_DiskLVMReleased:
-		return m.processOldReplaceDiskStatusDiskLVMReleased(replaceDisk)
+		if replaceDisk.Spec.ReplaceDiskStage == apisv1alpha1.ReplaceDiskStage_Init || replaceDisk.Spec.ReplaceDiskStage == apisv1alpha1.ReplaceDiskStage_WaitDiskReplaced {
+			return m.processOldReplaceDiskStatusDiskLVMReleased(replaceDisk)
+		}
 	case apisv1alpha1.ReplaceDisk_Failed:
 		return m.processOldReplaceDiskStatusFailed(replaceDisk)
 	default:
@@ -166,7 +172,8 @@ func (m *manager) processReplaceDisk(replaceDiskNameSpacedName string) error {
 
 func (m *manager) processOldReplaceDiskStatusInit(replaceDisk *apisv1alpha1.ReplaceDisk) error {
 	replaceDisk.Spec.ReplaceDiskStage = apisv1alpha1.ReplaceDiskStage_WaitDiskReplaced
-	return m.rdhandler.UpdateReplaceDiskStage(replaceDisk.Spec.ReplaceDiskStage)
+	m.rdhandler.SetReplaceDiskStage(replaceDisk.Spec.ReplaceDiskStage)
+	return m.rdhandler.UpdateReplaceDiskCR()
 }
 
 func (m *manager) processOldReplaceDiskStatusWaitDataRepair(replaceDisk *apisv1alpha1.ReplaceDisk) error {
@@ -299,8 +306,8 @@ func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *api
 
 func (m manager) processOldReplaceDiskStatusDiskLVMReleased(replaceDisk *apisv1alpha1.ReplaceDisk) error {
 	replaceDisk.Spec.ReplaceDiskStage = apisv1alpha1.ReplaceDiskStage_WaitSvcRestor
-	return m.rdhandler.UpdateReplaceDiskStage(replaceDisk.Spec.ReplaceDiskStage)
-	return nil
+	m.rdhandler.SetReplaceDiskStage(replaceDisk.Spec.ReplaceDiskStage)
+	return m.rdhandler.UpdateReplaceDiskCR()
 }
 
 func (m *manager) processOldReplaceDiskStatusFailed(replaceDisk *apisv1alpha1.ReplaceDisk) error {
@@ -376,8 +383,8 @@ func (m *manager) processNewReplaceDiskStatusWaitDataBackup(replaceDisk *apisv1a
 
 func (m manager) processNewReplaceDiskStatusDataBackuped(replaceDisk *apisv1alpha1.ReplaceDisk) error {
 	replaceDisk.Spec.ReplaceDiskStage = apisv1alpha1.ReplaceDiskStage_Succeed
-	return m.rdhandler.UpdateReplaceDiskStage(replaceDisk.Spec.ReplaceDiskStage)
-	return nil
+	m.rdhandler.SetReplaceDiskStage(replaceDisk.Spec.ReplaceDiskStage)
+	return m.rdhandler.UpdateReplaceDiskCR()
 }
 
 func (m *manager) processNewReplaceDiskStatusSucceed(replaceDisk *apisv1alpha1.ReplaceDisk) error {

@@ -15,7 +15,7 @@ spec:
       hostNetwork: true
       hostPID: true
       serviceAccountName: improved-system
-      containers:7
+      containers:
         - name: improved-system
           # Replace this with the built image name
           image: ghcr.io/hwameistor/improved-system:v0.0.1

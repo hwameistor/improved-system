@@ -42,6 +42,23 @@ const (
 	ReplaceDiskStage_Failed ReplaceDiskStage = "Failed"
 )
 
+func (r ReplaceDiskStage) String() string {
+	switch r {
+	case ReplaceDiskStage_Init:
+		return "Init"
+	case ReplaceDiskStage_WaitDiskReplaced:
+		return "WaitDiskReplaced"
+	case ReplaceDiskStage_WaitSvcRestor:
+		return "WaitSvcRestor"
+	case ReplaceDiskStage_Succeed:
+		return "Succeed"
+	case ReplaceDiskStage_Failed:
+		return "Failed"
+	default:
+		return "NA"
+	}
+}
+
 // ReplaceDiskStatus defines the observed status of OldReplaceDisk and NewReplaceDisk
 type ReplaceDiskStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
