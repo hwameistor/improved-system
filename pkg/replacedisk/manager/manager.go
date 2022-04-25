@@ -50,35 +50,6 @@ type manager struct {
 	logger *log.Entry
 }
 
-//func Manager() (apis.ReplaceDiskManager, error) {
-//	// Get a config to talk to the apiserver
-//	cfg, err := config.GetConfig()
-//	if err != nil {
-//		log.Error(err, "")
-//		os.Exit(1)
-//	}
-//
-//	// Set default manager options
-//	options := mgrpkg.Options{
-//		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
-//	}
-//
-//	// Create a new manager to provide shared dependencies and start components
-//	mgr, err := mgrpkg.New(cfg, options)
-//	if err != nil {
-//		log.Error(err, "")
-//		os.Exit(1)
-//	}
-//	if replaceDiskManager == nil {
-//		replaceDiskManager, err = New(mgr)
-//		if err != nil {
-//			log.Error(err, "")
-//			return replaceDiskManager, err
-//		}
-//	}
-//	return replaceDiskManager, nil
-//}
-
 // New replacedisk manager
 func New(mgr mgrpkg.Manager) (apis.ReplaceDiskManager, error) {
 	var recorder record.EventRecorder
@@ -150,6 +121,8 @@ func (rdHandler *ReplaceDiskHandler) GetReplaceDisk(key client.ObjectKey) (*apis
 
 // UpdateReplaceDiskStatus
 func (rdHandler *ReplaceDiskHandler) UpdateReplaceDiskStatus(status apisv1alpha1.ReplaceDiskStatus) error {
+	log.Debugf("ReplaceDiskHandler UpdateReplaceDiskStatus status = %v", status)
+
 	rdHandler.ReplaceDisk.Status.OldDiskReplaceStatus = status.OldDiskReplaceStatus
 	rdHandler.ReplaceDisk.Status.NewDiskReplaceStatus = status.NewDiskReplaceStatus
 	return rdHandler.Status().Update(context.Background(), &rdHandler.ReplaceDisk)

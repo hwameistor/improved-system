@@ -19,6 +19,8 @@ import (
 	"github.com/hwameistor/improved-system/pkg/apis"
 	replacediskmanager "github.com/hwameistor/improved-system/pkg/replacedisk/manager"
 	"github.com/hwameistor/improved-system/version"
+	ldmv1alpha1 "github.com/hwameistor/local-disk-manager/pkg/apis"
+	apisv1alpha1 "github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
@@ -98,6 +100,16 @@ func main() {
 	// Setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := ldmv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "Failed to setup scheme for ldm resources")
+		os.Exit(1)
+	}
+
+	if err := apisv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "Failed to setup scheme for ldm resources")
 		os.Exit(1)
 	}
 
