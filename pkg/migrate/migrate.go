@@ -36,7 +36,7 @@ func NewController(mgr crmanager.Manager) Controller {
 
 // CreateLocalVolumeMigrate
 func (ctr Controller) CreateLocalVolumeMigrate(lvm lsapisv1alpha1.LocalVolumeMigrate) error {
-	log.Debugf("Create LocalVolumeMigrate for %+v", lvm)
+	log.Debugf("Create LocalVolumeMigrate lvm %+v", lvm)
 
 	return ctr.mgr.GetClient().Create(context.Background(), &lvm)
 }
@@ -58,6 +58,8 @@ func (ctr Controller) IsAlreadyExist(lvm lsapisv1alpha1.LocalVolumeMigrate) bool
 
 // GetLocalVolumeMigrate
 func (ctr Controller) GetLocalVolumeMigrate(key client.ObjectKey) (lsapisv1alpha1.LocalVolumeMigrate, error) {
+	log.Debugf("GetLocalVolumeMigrate key = %+v", key)
+
 	lvm := lsapisv1alpha1.LocalVolumeMigrate{}
 	if err := ctr.mgr.GetClient().Get(context.Background(), key, &lvm); err != nil {
 		if errors.IsNotFound(err) {
@@ -70,6 +72,8 @@ func (ctr Controller) GetLocalVolumeMigrate(key client.ObjectKey) (lsapisv1alpha
 }
 
 func (ctr Controller) GetLocalVolumeMigrateStatusByLocalVolume(vol lsapisv1alpha1.LocalVolume) (lsapisv1alpha1.LocalVolumeMigrateStatus, error) {
+	log.Debugf("GetLocalVolumeMigrateStatusByLocalVolume vol = %+v", vol)
+
 	var localVolumeMigrateStatus lsapisv1alpha1.LocalVolumeMigrateStatus
 
 	migrateName := ctr.genLocalVolumeMigrateName(vol)
@@ -86,6 +90,8 @@ func (ctr Controller) GetLocalVolumeMigrateStatusByLocalVolume(vol lsapisv1alpha
 
 // GetLocalVolumeMigrateStatus
 func (ctr Controller) GetLocalVolumeMigrateStatus(key client.ObjectKey) (lsapisv1alpha1.LocalVolumeMigrateStatus, error) {
+	log.Debugf("GetLocalVolumeMigrateStatus key = %+v", key)
+
 	var localVolumeMigrateStatus lsapisv1alpha1.LocalVolumeMigrateStatus
 	lvm, err := ctr.GetLocalVolumeMigrate(key)
 	if err != nil {
@@ -99,7 +105,7 @@ func (ctr Controller) GetLocalVolumeMigrateStatus(key client.ObjectKey) (lsapisv
 
 // ConstructLocalVolumeMigrate
 func (ctr Controller) ConstructLocalVolumeMigrate(vol lsapisv1alpha1.LocalVolume) (*lsapisv1alpha1.LocalVolumeMigrate, error) {
-	log.Debugf("ConstructLocalVolumeMigrate for %+v", vol)
+	log.Debugf("ConstructLocalVolumeMigrate vol = %+v", vol)
 	selectedMigratedNodeName, err := ctr.genLocalVolumeNodeName(vol)
 	if err != nil {
 		log.Errorf("Failed to genLocalVolumeNodeName")
@@ -126,7 +132,7 @@ func (ctr Controller) ConstructLocalVolumeMigrate(vol lsapisv1alpha1.LocalVolume
 
 // GenLocalVolumeMigrateNodeName
 func (ctr Controller) genLocalVolumeNodeName(vol lsapisv1alpha1.LocalVolume) (string, error) {
-	log.Debugf("GenLocalVolumeNodeName for %+v", vol)
+	log.Debugf("genLocalVolumeNodeName vol = %+v", vol)
 	nodeList := &lsapisv1alpha1.LocalStorageNodeList{}
 	if err := ctr.mgr.GetClient().List(context.Background(), nodeList); err != nil {
 		log.Errorf("Failed to get NodeList")
@@ -150,11 +156,13 @@ func (ctr Controller) genLocalVolumeNodeName(vol lsapisv1alpha1.LocalVolume) (st
 }
 
 func (ctr Controller) genLocalVolumeMigrateSpec(lvm *lsapisv1alpha1.LocalVolumeMigrate, nodeName string) lsapisv1alpha1.LocalVolumeMigrateSpec {
+	log.Debugf("genLocalVolumeMigrateSpec lvm = %+v, nodeName = %+v", lvm, nodeName)
+
 	var localVolumeMigrate = lsapisv1alpha1.LocalVolumeMigrateSpec{}
 	splits := strings.Split(lvm.Name, "-")
 	var localVolumeName string = "default"
 	if len(splits) >= 2 {
-		localVolumeName = strings.Split(lvm.Name, "-")[1]
+		localVolumeName = strings.Split(lvm.Name, "--")[1]
 	}
 	localVolumeMigrate.VolumeName = localVolumeName
 	localVolumeMigrate.NodeName = nodeName
@@ -162,5 +170,5 @@ func (ctr Controller) genLocalVolumeMigrateSpec(lvm *lsapisv1alpha1.LocalVolumeM
 }
 
 func (ctr Controller) genLocalVolumeMigrateName(vol lsapisv1alpha1.LocalVolume) string {
-	return vol.Spec.Accessibility.Node + "-" + vol.Name
+	return vol.Spec.Accessibility.Node + "--" + vol.Name
 }

@@ -125,88 +125,27 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 				logr.Error(err, "UpdateReplaceDiskCR SetReplaceDiskStage ReplaceDiskStage_Init failed")
 				return reconcile.Result{Requeue: true}, nil
 			}
+			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+				logr.Error(err, "ReplaceDiskStage_Init UpdateReplaceDiskStatus ReplaceDisk_Init,ReplaceDisk_Init failed")
+				return reconcile.Result{Requeue: true}, nil
+			}
 		}
 
 		logr.Debug("replaceDisk.Spec.ReplaceDiskStage = %v, replaceDiskStatus = %v", rdhandler.ReplaceDiskStage().String(), rdhandler.ReplaceDiskStatus())
 		return reconcile.Result{Requeue: true}, nil
 	case apisv1alpha1.ReplaceDiskStage_Init:
 		logr.Debug("ReplaceDiskStage_Init replaceDisk.Spec.ReplaceDiskStage = %v, replaceDiskStatus = %v", rdhandler.ReplaceDiskStage().String(), rdhandler.ReplaceDiskStatus())
-		if replaceDiskStatus.OldDiskReplaceStatus == "" && replaceDiskStatus.NewDiskReplaceStatus == "" {
-			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
-			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
-			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
-				logr.Error(err, "UpdateReplaceDiskStatus failed")
-				return reconcile.Result{Requeue: true}, nil
-			}
-		}
+
 	case apisv1alpha1.ReplaceDiskStage_WaitDiskReplaced:
-		logr.Debug("ReplaceDiskStage_WaitDiskReplaced replaceDisk.Spec.ReplaceDiskStage = %v, replaceDiskStatus = %v", rdhandler.ReplaceDiskStage().String(), rdhandler.ReplaceDiskStatus())
-		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
-			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDataRepair
-			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
-			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
-				logr.Error(err, "UpdateReplaceDiskStatus failed")
-				return reconcile.Result{Requeue: true}, nil
-			}
-		}
-
-		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDataRepair && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
-			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDiskLVMRelease
-			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
-			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
-				logr.Error(err, "UpdateReplaceDiskStatus failed")
-				return reconcile.Result{Requeue: true}, nil
-			}
-		}
-
-		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDiskLVMRelease && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
-			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
-			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
-			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
-				logr.Error(err, "UpdateReplaceDiskStatus failed")
-				return reconcile.Result{Requeue: true}, nil
-			}
-		}
+		logr.Debug("ReplaceDiskStage_WaitDiskReplaced replaceDisk.Spec.ReplaceDiskStage 1= %v, replaceDiskStatus = %v", rdhandler.ReplaceDiskStage().String(), rdhandler.ReplaceDiskStatus())
 
 	case apisv1alpha1.ReplaceDiskStage_WaitSvcRestor:
 		logr.Debug("ReplaceDiskStage_WaitSvcRestor replaceDisk.Spec.ReplaceDiskStage = %v, replaceDiskStatus = %v", rdhandler.ReplaceDiskStage().String(), rdhandler.ReplaceDiskStatus())
-		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_Init {
-			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
-			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDiskLVMRejoin
-			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
-				logr.Error(err, "UpdateReplaceDiskStatus failed")
-				return reconcile.Result{Requeue: true}, nil
-			}
-		}
-
-		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDiskLVMRejoin {
-			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
-			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_WaitDataBackup
-			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
-				logr.Error(err, "UpdateReplaceDiskStatus failed")
-				return reconcile.Result{Requeue: true}, nil
-			}
-		}
-
-		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_WaitDataBackup {
-			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
-			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DataBackuped
-			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
-				logr.Error(err, "UpdateReplaceDiskStatus failed")
-				return reconcile.Result{Requeue: true}, nil
-			}
-		}
 
 	case apisv1alpha1.ReplaceDiskStage_Succeed:
 		logr.Debug("ReplaceDiskStage_Succeed replaceDisk.Spec.ReplaceDiskStage = %v, replaceDiskStatus = %v", rdhandler.ReplaceDiskStage().String(), rdhandler.ReplaceDiskStatus())
-		if replaceDiskStatus.OldDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DiskLVMReleased && replaceDiskStatus.NewDiskReplaceStatus == apisv1alpha1.ReplaceDisk_DataBackuped {
-			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_DiskLVMReleased
-			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Succeed
-			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
-				logr.Error(err, "UpdateReplaceDiskStatus failed")
-				return reconcile.Result{Requeue: true}, nil
-			}
-		}
 
 	case apisv1alpha1.ReplaceDiskStage_Failed:
 		return reconcile.Result{Requeue: true}, nil

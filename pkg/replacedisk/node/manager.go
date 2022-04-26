@@ -32,12 +32,9 @@ func NewReplaceDiskNodeManager() apis.ReplaceDiskNodeManager {
 }
 
 func (m *ReplaceDiskNodeMgr) ReconcileReplaceDisk(replaceDisk *v1alpha1.ReplaceDisk) {
-	m.logger.Debug("ReconcileReplaceDisk m.replaceDiskTaskQueue before = %v", m.ReplaceDiskTaskQueue)
-
 	if replaceDisk.Spec.NodeName == m.nodeName {
 		m.replaceDiskTaskQueue.Add(replaceDisk.Namespace + "/" + replaceDisk.Name)
 	}
-	m.logger.Debug("ReconcileReplaceDisk m.replaceDiskTaskQueue after = %v", m.ReplaceDiskTaskQueue)
 }
 
 func (m *ReplaceDiskNodeMgr) ReplaceDiskTaskQueue() *common.TaskQueue {
