@@ -162,7 +162,7 @@ func (ctr Controller) genLocalVolumeMigrateSpec(lvm *lsapisv1alpha1.LocalVolumeM
 	splits := strings.Split(lvm.Name, "-")
 	var localVolumeName string = "default"
 	if len(splits) >= 2 {
-		localVolumeName = strings.Split(lvm.Name, "-")[1]
+		localVolumeName = strings.Split(lvm.Name, "--")[1]
 	}
 	localVolumeMigrate.VolumeName = localVolumeName
 	localVolumeMigrate.NodeName = nodeName
@@ -170,5 +170,5 @@ func (ctr Controller) genLocalVolumeMigrateSpec(lvm *lsapisv1alpha1.LocalVolumeM
 }
 
 func (ctr Controller) genLocalVolumeMigrateName(vol lsapisv1alpha1.LocalVolume) string {
-	return vol.Spec.Accessibility.Node + "-" + vol.Name
+	return vol.Spec.Accessibility.Node + "--" + vol.Name
 }
