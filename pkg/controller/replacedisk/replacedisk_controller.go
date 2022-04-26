@@ -154,8 +154,6 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 		reqLogger.Error(err, "Invalid ReplaceDisk stage")
 	}
 
-	logr.Debug("debug r.replaceDiskManager = %v", r.replaceDiskManager)
-
 	r.replaceDiskManager.ReplaceDiskNodeManager().ReconcileReplaceDisk(&rdhandler.ReplaceDisk)
 
 	return reconcile.Result{}, nil
