@@ -160,7 +160,7 @@ func (ctr Controller) genLocalVolumeMigrateSpec(lvm *lsapisv1alpha1.LocalVolumeM
 
 	var localVolumeMigrate = lsapisv1alpha1.LocalVolumeMigrateSpec{}
 	splits := strings.Split(lvm.Name, "-")
-	var localVolumeName string = "default"
+	var localVolumeName = "default"
 	if len(splits) >= 2 {
 		localVolumeName = strings.Split(lvm.Name, "--")[1]
 	}

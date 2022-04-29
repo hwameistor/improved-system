@@ -18,13 +18,7 @@ import (
 	mgrpkg "sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-// Infinitely retry
-const maxRetries = 0
-
 var (
-	metricsHost                  = "0.0.0.0"
-	metricsPort            int32 = 8384
-	replaceDiskManager     apis.ReplaceDiskManager
 	replaceDiskNodeManager apis.ReplaceDiskNodeManager
 )
 
@@ -147,6 +141,24 @@ func (rdHandler *ReplaceDiskHandler) SetReplaceDisk(rd apisv1alpha1.ReplaceDisk)
 // SetReplaceDisk
 func (rdHandler *ReplaceDiskHandler) SetMigrateVolumeNames(volumeNames []string) *ReplaceDiskHandler {
 	rdHandler.ReplaceDisk.Status.MigrateVolumeNames = volumeNames
+	return rdHandler
+}
+
+// SetMigrateSucceededVolumeNames
+func (rdHandler *ReplaceDiskHandler) SetMigrateSucceededVolumeNames(volumeNames []string) *ReplaceDiskHandler {
+	rdHandler.ReplaceDisk.Status.MigrateSucceededVolumeNames = volumeNames
+	return rdHandler
+}
+
+// SetMigrateFailededVolumeNames
+func (rdHandler *ReplaceDiskHandler) SetMigrateFailededVolumeNames(volumeNames []string) *ReplaceDiskHandler {
+	rdHandler.ReplaceDisk.Status.MigrateFailededVolumeNames = volumeNames
+	return rdHandler
+}
+
+// SetErrMsg
+func (rdHandler *ReplaceDiskHandler) SetErrMsg(errMsg string) *ReplaceDiskHandler {
+	rdHandler.ReplaceDisk.Status.ErrMsg = errMsg
 	return rdHandler
 }
 

@@ -22,8 +22,6 @@ const (
 	PoolNameForHDD  = PoolNamePrefix + DiskClassNameHDD
 	PoolNameForSSD  = PoolNamePrefix + DiskClassNameSSD
 	PoolNameForNVMe = PoolNamePrefix + DiskClassNameNVMe
-
-	PoolTypeRegular = "REGULAR"
 )
 
 // GetNodeName gets the node name from env, else

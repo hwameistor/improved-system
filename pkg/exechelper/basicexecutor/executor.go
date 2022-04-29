@@ -66,7 +66,7 @@ func (e *basicExecutor) RunCommand(params exechelper.ExecParams) exechelper.Exec
 
 	if ctx.Err() == context.DeadlineExceeded {
 		result.ExitCode = exitCodeTimeout
-		result.Error = fmt.Errorf("Command %s %s timed out after %d seconds", params.CmdName, params.CmdArgs, params.Timeout)
+		result.Error = fmt.Errorf("command %s %s timed out after %d seconds", params.CmdName, params.CmdArgs, params.Timeout)
 		err = result.Error
 	}
 

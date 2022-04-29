@@ -69,7 +69,13 @@ type ReplaceDiskStatus struct {
 	// Init WaitDiskLVMRejoin WaitDataBackup Succeed
 	NewDiskReplaceStatus ReplaceStatus `json:"newDiskReplaceStatus,omitempty"`
 	// MigrateVolumeNames migrateVolumeNames of the replaced disk
-	MigrateVolumeNames []string `json:"volumeNames,omitempty"`
+	MigrateVolumeNames []string `json:"migrateVolumeNames,omitempty"`
+	// MigrateSucceededVolumeNames migrateSucceededVolumeNames of the replaced disk
+	MigrateSucceededVolumeNames []string `json:"migrateSucceededVolumeNames,omitempty"`
+	// MigrateFailededVolumeNames migrateFailededVolumeNames of the replaced disk
+	MigrateFailededVolumeNames []string `json:"migrateFailededVolumeNames,omitempty"`
+	// ErrMsg errMsg of the replaced disk
+	ErrMsg string `json:"errMsg,omitempty"`
 }
 
 // ReplaceStatus defines the observed status of replacedDisk
