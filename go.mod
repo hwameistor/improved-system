@@ -1,4 +1,4 @@
-module github.com/hwameistor/improved-system
+module github.com/hwameistor/reliable-helper-system
 
 go 1.17
 

@@ -2,9 +2,9 @@ package replacedisk
 
 import (
 	"context"
-	"github.com/hwameistor/improved-system/pkg/apis"
-	apisv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
-	replacediskmanager "github.com/hwameistor/improved-system/pkg/replacedisk/manager"
+	"github.com/hwameistor/reliable-helper-system/pkg/apis"
+	apisv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/hwameistor/v1alpha1"
+	replacediskmanager "github.com/hwameistor/reliable-helper-system/pkg/replacedisk/manager"
 	logr "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

@@ -2,13 +2,13 @@ package manager
 
 import (
 	"context"
-	"github.com/hwameistor/improved-system/pkg/apis"
-	apisv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
-	migratepkg "github.com/hwameistor/improved-system/pkg/migrate"
-	"github.com/hwameistor/improved-system/pkg/replacedisk/node"
-	"github.com/hwameistor/improved-system/pkg/utils"
 	ldctr "github.com/hwameistor/local-disk-manager/pkg/controller/localdisk"
 	"github.com/hwameistor/local-disk-manager/pkg/localdisk"
+	"github.com/hwameistor/reliable-helper-system/pkg/apis"
+	apisv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/hwameistor/v1alpha1"
+	migratepkg "github.com/hwameistor/reliable-helper-system/pkg/migrate"
+	"github.com/hwameistor/reliable-helper-system/pkg/replacedisk/node"
+	"github.com/hwameistor/reliable-helper-system/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

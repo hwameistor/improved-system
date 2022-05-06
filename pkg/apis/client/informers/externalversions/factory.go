@@ -23,9 +23,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/hwameistor/improved-system/pkg/apis/client/clientset/versioned"
-	hwameistor "github.com/hwameistor/improved-system/pkg/apis/client/informers/externalversions/hwameistor"
-	internalinterfaces "github.com/hwameistor/improved-system/pkg/apis/client/informers/externalversions/internalinterfaces"
+	versioned "github.com/hwameistor/reliable-helper-system/pkg/apis/client/clientset/versioned"
+	hwameistor "github.com/hwameistor/reliable-helper-system/pkg/apis/client/informers/externalversions/hwameistor"
+	internalinterfaces "github.com/hwameistor/reliable-helper-system/pkg/apis/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

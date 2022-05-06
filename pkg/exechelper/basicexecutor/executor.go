@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hwameistor/improved-system/pkg/exechelper"
+	"github.com/hwameistor/reliable-helper-system/pkg/exechelper"
 	log "github.com/sirupsen/logrus"
 )
 

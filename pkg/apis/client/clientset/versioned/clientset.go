@@ -21,7 +21,7 @@ package versioned
 import (
 	"fmt"
 
-	hwameistorv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/client/clientset/versioned/typed/hwameistor/v1alpha1"
+	hwameistorv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/client/clientset/versioned/typed/hwameistor/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

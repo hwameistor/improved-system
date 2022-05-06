@@ -19,8 +19,8 @@ limitations under the License.
 package hwameistor
 
 import (
-	v1alpha1 "github.com/hwameistor/improved-system/pkg/apis/client/informers/externalversions/hwameistor/v1alpha1"
-	internalinterfaces "github.com/hwameistor/improved-system/pkg/apis/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/client/informers/externalversions/hwameistor/v1alpha1"
+	internalinterfaces "github.com/hwameistor/reliable-helper-system/pkg/apis/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.

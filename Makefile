@@ -71,7 +71,7 @@ release:
 _gen-apis:
 	${OPERATOR_CMD} generate k8s
 	${OPERATOR_CMD} generate crds
-	GOPROXY=https://goproxy.cn,direct /code-generator/generate-groups.sh all github.com/hwameistor/improved-system/pkg/apis/client github.com/hwameistor/improved-system/pkg/apis "hwameistor:v1alpha1" --go-header-file /go/src/github.com/hwameistor/improved-system/build/boilerplate.go.txt
+	GOPROXY=https://goproxy.cn,direct /code-generator/generate-groups.sh all github.com/hwameistor/reliable-helper-system/pkg/apis/client github.com/hwameistor/reliable-helper-system/pkg/apis "hwameistor:v1alpha1" --go-header-file /go/src/github.com/hwameistor/reliable-helper-system/build/boilerplate.go.txt
 
 .PHONY: apis
 apis:

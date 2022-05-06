@@ -1,8 +1,8 @@
 package manager
 
 import (
-	"github.com/hwameistor/improved-system/pkg/exechelper"
-	"github.com/hwameistor/improved-system/pkg/exechelper/nsexecutor"
+	"github.com/hwameistor/reliable-helper-system/pkg/exechelper"
+	"github.com/hwameistor/reliable-helper-system/pkg/exechelper/nsexecutor"
 )
 
 type lvmExecutor struct {

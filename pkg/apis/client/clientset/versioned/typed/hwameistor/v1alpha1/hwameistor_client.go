@@ -19,8 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/hwameistor/improved-system/pkg/apis/client/clientset/versioned/scheme"
-	v1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
+	"github.com/hwameistor/reliable-helper-system/pkg/apis/client/clientset/versioned/scheme"
+	v1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/hwameistor/v1alpha1"
 	rest "k8s.io/client-go/rest"
 )
 
