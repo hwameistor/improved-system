@@ -42,6 +42,23 @@ const (
 	ReplaceDiskStage_Failed ReplaceDiskStage = "Failed"
 )
 
+func (r ReplaceDiskStage) String() string {
+	switch r {
+	case ReplaceDiskStage_Init:
+		return "Init"
+	case ReplaceDiskStage_WaitDiskReplaced:
+		return "WaitDiskReplaced"
+	case ReplaceDiskStage_WaitSvcRestor:
+		return "WaitSvcRestor"
+	case ReplaceDiskStage_Succeed:
+		return "Succeed"
+	case ReplaceDiskStage_Failed:
+		return "Failed"
+	default:
+		return "NA"
+	}
+}
+
 // ReplaceDiskStatus defines the observed status of OldReplaceDisk and NewReplaceDisk
 type ReplaceDiskStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
@@ -52,7 +69,13 @@ type ReplaceDiskStatus struct {
 	// Init WaitDiskLVMRejoin WaitDataBackup Succeed
 	NewDiskReplaceStatus ReplaceStatus `json:"newDiskReplaceStatus,omitempty"`
 	// MigrateVolumeNames migrateVolumeNames of the replaced disk
-	MigrateVolumeNames []string `json:"volumeNames,omitempty"`
+	MigrateVolumeNames []string `json:"migrateVolumeNames,omitempty"`
+	// MigrateSucceededVolumeNames migrateSucceededVolumeNames of the replaced disk
+	MigrateSucceededVolumeNames []string `json:"migrateSucceededVolumeNames,omitempty"`
+	// MigrateFailededVolumeNames migrateFailededVolumeNames of the replaced disk
+	MigrateFailededVolumeNames []string `json:"migrateFailededVolumeNames,omitempty"`
+	// ErrMsg errMsg of the replaced disk
+	ErrMsg string `json:"errMsg,omitempty"`
 }
 
 // ReplaceStatus defines the observed status of replacedDisk

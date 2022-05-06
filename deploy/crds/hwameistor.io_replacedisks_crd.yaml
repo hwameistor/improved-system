@@ -53,6 +53,27 @@ spec:
             description: ReplaceDiskStatus defines the observed status of OldReplaceDisk
               and NewReplaceDisk
             properties:
+              errMsg:
+                description: ErrMsg errMsg of the replaced disk
+                type: string
+              migrateFailededVolumeNames:
+                description: MigrateFailededVolumeNames migrateFailededVolumeNames
+                  of the replaced disk
+                items:
+                  type: string
+                type: array
+              migrateSucceededVolumeNames:
+                description: MigrateSucceededVolumeNames migrateSucceededVolumeNames
+                  of the replaced disk
+                items:
+                  type: string
+                type: array
+              migrateVolumeNames:
+                description: MigrateVolumeNames migrateVolumeNames of the replaced
+                  disk
+                items:
+                  type: string
+                type: array
               newDiskReplaceStatus:
                 description: Init WaitDiskLVMRejoin WaitDataBackup Succeed
                 type: string

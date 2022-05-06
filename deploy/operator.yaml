@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: hwameistor-local-disk-manager
+  name: hwameistor-improved-system
   namespace: hwameistor
 spec:
   selector:
     matchLabels:
-      name: hwameistor-local-disk-manager
+      name: hwameistor-improved-system
   template:
     metadata:
       labels:
-        name: hwameistor-local-disk-manager
+        name: hwameistor-improved-system
     spec:
       hostNetwork: true
       hostPID: true
-      serviceAccountName: local-disk-manager
+      serviceAccountName: improved-system
       containers:
-        - name: local-disk-manager
+        - name: improved-system
           # Replace this with the built image name
-          image: ghcr.io/hwameistor/local-disk-manager:v0.0.2
+          image: ghcr.io/hwameistor/improved-system:v0.0.1
           command:
-          - /local-disk-manager
+          - /improved-system
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: udev
@@ -48,7 +48,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: OPERATOR_NAME
-              value: "local-disk-manager"
+              value: "improved-system"
           securityContext:
             privileged: true
       volumes:

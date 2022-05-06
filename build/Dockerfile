@@ -2,6 +2,6 @@ FROM centos:7
 
 RUN yum install -y smartmontools lsscsi
 
-COPY ./_build/local-disk-manager /local-disk-manager
+COPY ./_build/improved-system /improved-system
 
-ENTRYPOINT [ "/local-disk-manager" ]
+ENTRYPOINT [ "/improved-system" ]
