@@ -36,6 +36,7 @@ func (lvm *lvmExecutor) vgreduce(vgName, diskpath string, options []string) erro
 func (lvm *lvmExecutor) pvremove(vgName, diskpath string, options []string) error {
 	params := exechelper.ExecParams{
 		CmdName: "pvmove",
+		//CmdArgs: []string{diskpath, "--force", "--force"},
 		CmdArgs: []string{diskpath},
 	}
 	params.CmdArgs = append(params.CmdArgs, options...)

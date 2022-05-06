@@ -10,7 +10,6 @@ import (
 	ldctr "github.com/hwameistor/local-disk-manager/pkg/controller/localdisk"
 	"github.com/hwameistor/local-disk-manager/pkg/localdisk"
 	log "github.com/sirupsen/logrus"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -62,7 +61,9 @@ func New(mgr mgrpkg.Manager) (apis.ReplaceDiskManager, error) {
 }
 
 func (m *manager) Run(stopCh <-chan struct{}) {
+
 	go m.startReplaceDiskTaskWorker(stopCh)
+
 }
 
 func (m *manager) ReplaceDiskNodeManager() apis.ReplaceDiskNodeManager {
@@ -123,13 +124,13 @@ func (rdHandler *ReplaceDiskHandler) UpdateReplaceDiskStatus(status apisv1alpha1
 }
 
 // Refresh
-func (rdHandler *ReplaceDiskHandler) Refresh() error {
+func (rdHandler *ReplaceDiskHandler) Refresh() (*ReplaceDiskHandler, error) {
 	rd, err := rdHandler.GetReplaceDisk(client.ObjectKey{Name: rdHandler.ReplaceDisk.GetName(), Namespace: rdHandler.ReplaceDisk.GetNamespace()})
 	if err != nil {
-		return err
+		return rdHandler, err
 	}
 	rdHandler.SetReplaceDisk(*rd.DeepCopy())
-	return nil
+	return rdHandler, nil
 }
 
 // SetReplaceDisk
