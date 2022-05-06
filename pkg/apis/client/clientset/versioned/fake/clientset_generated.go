@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/hwameistor/improved-system/pkg/apis/client/clientset/versioned"
-	hwameistorv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/client/clientset/versioned/typed/hwameistor/v1alpha1"
-	fakehwameistorv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/client/clientset/versioned/typed/hwameistor/v1alpha1/fake"
+	clientset "github.com/hwameistor/reliable-helper-system/pkg/apis/client/clientset/versioned"
+	hwameistorv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/client/clientset/versioned/typed/hwameistor/v1alpha1"
+	fakehwameistorv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/client/clientset/versioned/typed/hwameistor/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

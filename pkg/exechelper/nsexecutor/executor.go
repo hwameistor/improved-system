@@ -1,8 +1,8 @@
 package nsexecutor
 
 import (
-	"github.com/hwameistor/improved-system/pkg/exechelper"
-	"github.com/hwameistor/improved-system/pkg/exechelper/basicexecutor"
+	"github.com/hwameistor/reliable-helper-system/pkg/exechelper"
+	"github.com/hwameistor/reliable-helper-system/pkg/exechelper/basicexecutor"
 )
 
 type nsenterExecutor struct {

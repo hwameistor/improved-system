@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	apisv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
-	"github.com/hwameistor/improved-system/pkg/utils"
 	ldm "github.com/hwameistor/local-disk-manager/pkg/apis/hwameistor/v1alpha1"
 	"github.com/hwameistor/local-disk-manager/pkg/controller/localdisk"
 	lsapisv1alpha1 "github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1"
+	apisv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/hwameistor/v1alpha1"
+	"github.com/hwameistor/reliable-helper-system/pkg/utils"
 	log "github.com/sirupsen/logrus"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -70,12 +70,6 @@ func (m *manager) processReplaceDisk(replaceDiskNameSpacedName string) error {
 
 	rdhandler := m.rdhandler.SetReplaceDisk(*replaceDisk)
 	m.rdhandler = rdhandler
-
-	err := m.rdhandler.Refresh()
-	if err != nil {
-		logCtx.WithError(err).Error("Reconciling Refresh err", err)
-		return err
-	}
 
 	m.logger.Debugf("Required node name %s, current node name %s.", replaceDisk.Spec.NodeName, m.nodeName)
 	if replaceDisk.Spec.NodeName != m.nodeName {
@@ -334,6 +328,7 @@ func (m *manager) waitMigrateTaskByLocalVolumeDone(volList []lsapisv1alpha1.Loca
 		}()
 	}
 	wg.Wait()
+	m.rdhandler, _ = m.rdhandler.Refresh()
 	err := m.rdhandler.SetMigrateSucceededVolumeNames(migrateSucceedVols).SetMigrateFailededVolumeNames(migrateFailedVols).UpdateReplaceDiskStatus(m.rdhandler.ReplaceDiskStatus())
 	if err != nil {
 		m.logger.Errorf("waitMigrateTaskByLocalVolumeDone UpdateReplaceDiskStatus failed ... ")
@@ -388,6 +383,26 @@ func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *api
 	}
 
 	var options []string
+
+	ctx := context.TODO()
+
+	nodeList := &lsapisv1alpha1.LocalStorageNodeList{}
+	if err := m.apiClient.List(ctx, nodeList); err != nil {
+		m.logger.WithError(err).Error("Failed to get NodeList")
+		return err
+	}
+
+	for _, node := range nodeList.Items {
+		if node.Name == nodeName {
+			disks := node.Status.Pools[volGroupName].Disks
+			if len(disks) == 1 {
+				errMsg := "VgGroup has only one disk, cannot do replacedisk operation"
+				return errors.NewBadRequest(errMsg)
+			}
+			break
+		}
+	}
+
 	err = m.cmdExec.vgreduce(volGroupName, diskName, options)
 	if err != nil {
 		m.logger.WithError(err).Error("processOldReplaceDiskStatusWaitDiskLVMRelease: Failed to vgreduce")
@@ -398,13 +413,19 @@ func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *api
 		}
 		return err
 	}
-	// todo update ld ldmv1alpha1.LocalDiskReleased status
+
+	// check if vgs can execute pvremove
+	//err1 := m.cmdExec.pvremove(volGroupName, diskName, options)
+	//if err1 != nil {
+	//	m.logger.WithError(err1).Error("processOldReplaceDiskStatusWaitDiskLVMRelease: Failed to pvremove")
+	//	return err1
+	//}
+
 	key := client.ObjectKey{Name: localDisk.Name, Namespace: ""}
 	ldisk, err := m.ldhandler.GetLocalDisk(key)
 	if err != nil {
 		return err
 	}
-	m.logger.Debugf("processOldReplaceDiskStatusWaitDiskLVMRelease GetLocalDisk ldisk before = %v", ldisk)
 
 	ldhandler := m.ldhandler.For(*ldisk)
 	ldhandler.SetupStatus(ldm.LocalDiskReleased)
@@ -412,8 +433,6 @@ func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *api
 		log.WithError(err).Errorf("Update LocalDisk %v status fail", localDisk.Name)
 		return err
 	}
-	ldisk, _ = m.ldhandler.GetLocalDisk(key)
-	m.logger.Debugf("processOldReplaceDiskStatusWaitDiskLVMRelease GetLocalDisk ldisk after = %v", ldisk)
 
 	m.logger.Debugf("processOldReplaceDiskStatusWaitDiskLVMRelease end ... ")
 	return nil

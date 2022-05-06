@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	hwameistorv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
+	hwameistorv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/hwameistor/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
