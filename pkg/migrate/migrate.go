@@ -1,4 +1,4 @@
-package LocalVolumeMigrate
+package migrate
 
 import (
 	"context"

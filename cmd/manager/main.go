@@ -121,7 +121,7 @@ func main() {
 
 	//ctx := context.TODO()
 	// Become the leader before proceeding
-	//err = leader.Become(ctx, "improved-system-lock")
+	//err = leader.Become(ctx, "reliable-helper-system-lock")
 	//if err != nil {
 	//	log.Error(err, "")
 	//	os.Exit(1)

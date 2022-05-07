@@ -92,8 +92,8 @@ func NewReplaceDiskHandler(client client.Client, recorder record.EventRecorder) 
 func (rdHandler *ReplaceDiskHandler) ListReplaceDisk() (*apisv1alpha1.ReplaceDiskList, error) {
 	list := &apisv1alpha1.ReplaceDiskList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "ReplaceDisk",
-			APIVersion: "v1alpha1",
+			Kind:       ReplaceDiskKind,
+			APIVersion: ReplaceDiskAPIVersion,
 		},
 	}
 
@@ -151,9 +151,21 @@ func (rdHandler *ReplaceDiskHandler) SetMigrateSucceededVolumeNames(volumeNames 
 	return rdHandler
 }
 
+// SetMigrateBackUpSucceededVolumeNames
+func (rdHandler *ReplaceDiskHandler) SetMigrateBackUpSucceededVolumeNames(volumeNames []string) *ReplaceDiskHandler {
+	rdHandler.ReplaceDisk.Status.MigrateBackUpSucceededVolumeNames = volumeNames
+	return rdHandler
+}
+
 // SetMigrateFailededVolumeNames
 func (rdHandler *ReplaceDiskHandler) SetMigrateFailededVolumeNames(volumeNames []string) *ReplaceDiskHandler {
 	rdHandler.ReplaceDisk.Status.MigrateFailededVolumeNames = volumeNames
+	return rdHandler
+}
+
+// SetMigrateBackUpFailededVolumeNames
+func (rdHandler *ReplaceDiskHandler) SetMigrateBackUpFailededVolumeNames(volumeNames []string) *ReplaceDiskHandler {
+	rdHandler.ReplaceDisk.Status.MigrateBackUpFailededVolumeNames = volumeNames
 	return rdHandler
 }
 
@@ -182,4 +194,17 @@ func (rdHandler *ReplaceDiskHandler) SetReplaceDiskStage(stage apisv1alpha1.Repl
 // UpdateReplaceDiskCR
 func (rdHandler *ReplaceDiskHandler) UpdateReplaceDiskCR() error {
 	return rdHandler.Update(context.Background(), &rdHandler.ReplaceDisk)
+}
+
+// SetReplaceDisk
+func (rdHandler *ReplaceDiskHandler) CheckReplaceDiskTaskDestroyed(rd apisv1alpha1.ReplaceDisk) bool {
+	_, err := rdHandler.GetReplaceDisk(client.ObjectKey{Name: rd.Name, Namespace: rd.Namespace})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return true
+		}
+		return false
+	}
+
+	return false
 }
