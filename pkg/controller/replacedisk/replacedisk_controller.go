@@ -109,11 +109,6 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 	rdhandler := replacediskmanager.NewReplaceDiskHandler(r.client, r.Recorder)
 	rdhandler = rdhandler.SetReplaceDisk(*replaceDisk)
 	replaceDiskStatus := rdhandler.ReplaceDiskStatus()
-	//rdhandler, err = rdhandler.Refresh()
-	//if err != nil {
-	//	logr.Error("Reconciling Refresh err", err)
-	//	return reconcile.Result{}, err
-	//}
 	logr.Debug("replaceDisk.Spec.ReplaceDiskStage = %v, replaceDiskStatus = %v", replaceDisk.Spec.ReplaceDiskStage.String(), replaceDiskStatus)
 
 	switch replaceDisk.Spec.ReplaceDiskStage {
