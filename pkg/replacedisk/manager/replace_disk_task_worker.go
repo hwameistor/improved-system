@@ -4,6 +4,8 @@ import (
 	"context"
 	errs "errors"
 	"fmt"
+	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -275,13 +277,18 @@ func (m *manager) processOldReplaceDiskStatusWaitDataRepair(replaceDisk *apisv1a
 		localVolumeList = append(localVolumeList, *vol)
 	}
 
-	err = m.waitMigrateTaskByLocalVolumeDone(localVolumeList)
+	if len(localVolumeList) == 0 {
+		return nil
+	}
+
+	err = m.waitMigrateTaskByLocalVolumeDone(localVolumeList, MigrateType_DataRepair)
 	m.logger.Debug("processOldReplaceDiskStatusWaitDataRepair end ... ")
 	return err
 }
 
 func (m *manager) createMigrateTaskByLocalVolume(vol lsapisv1alpha1.LocalVolume) error {
 	m.logger.Debug("createMigrateTaskByLocalVolume start ... ")
+
 	localVolumeMigrate, err := m.migrateCtr.ConstructLocalVolumeMigrate(vol)
 	if err != nil {
 		log.Error(err, "createMigrateTaskByLocalVolume ConstructLocalVolumeMigrate failed")
@@ -292,16 +299,19 @@ func (m *manager) createMigrateTaskByLocalVolume(vol lsapisv1alpha1.LocalVolume)
 		log.Error(err, "createMigrateTaskByLocalVolume CreateLocalVolumeMigrate failed")
 		return err
 	}
+
 	m.logger.Debug("createMigrateTaskByLocalVolume end ... ")
 	return nil
 }
 
 // 统计数据迁移情况
-func (m *manager) waitMigrateTaskByLocalVolumeDone(volList []lsapisv1alpha1.LocalVolume) error {
+func (m *manager) waitMigrateTaskByLocalVolumeDone(volList []lsapisv1alpha1.LocalVolume, migrateType string) error {
 	m.logger.Debug("waitMigrateTaskByLocalVolumeDone start ... ")
 	var wg sync.WaitGroup
-	var migrateSucceedVols []string
-	var migrateFailedVols []string
+	var migrateSucceedVols = m.rdhandler.ReplaceDiskStatus().MigrateSucceededVolumeNames
+	var migrateBackUpSucceedVols = m.rdhandler.ReplaceDiskStatus().MigrateBackUpSucceededVolumeNames
+	var migrateFailedVols = m.rdhandler.ReplaceDiskStatus().MigrateFailededVolumeNames
+	var migrateBackUpFailedVols = m.rdhandler.ReplaceDiskStatus().MigrateBackUpFailededVolumeNames
 	for _, vol := range volList {
 		vol := vol
 		wg.Add(1)
@@ -318,18 +328,31 @@ func (m *manager) waitMigrateTaskByLocalVolumeDone(volList []lsapisv1alpha1.Loca
 				}
 				if migrateStatus.State == lsapisv1alpha1.OperationStateAborted || migrateStatus.State == lsapisv1alpha1.OperationStateAborting ||
 					migrateStatus.State == lsapisv1alpha1.OperationStateToBeAborted {
-					migrateFailedVols = append(migrateFailedVols, vol.Name)
+					if migrateType == MigrateType_DataRepair {
+						migrateFailedVols = append(migrateFailedVols, vol.Name)
+					}
+					if migrateType == MigrateType_BackUp {
+						migrateBackUpFailedVols = append(migrateBackUpFailedVols, vol.Name)
+					}
 					continue
 				}
-				migrateSucceedVols = append(migrateSucceedVols, vol.Name)
+				if migrateType == MigrateType_DataRepair {
+					migrateSucceedVols = append(migrateSucceedVols, vol.Name)
+				}
+				if migrateType == MigrateType_BackUp {
+					migrateBackUpSucceedVols = append(migrateBackUpSucceedVols, vol.Name)
+				}
 				break
 			}
 			wg.Done()
 		}()
 	}
 	wg.Wait()
-	m.rdhandler, _ = m.rdhandler.Refresh()
-	err := m.rdhandler.SetMigrateSucceededVolumeNames(migrateSucceedVols).SetMigrateFailededVolumeNames(migrateFailedVols).UpdateReplaceDiskStatus(m.rdhandler.ReplaceDiskStatus())
+
+	err := m.rdhandler.SetMigrateSucceededVolumeNames(migrateSucceedVols).SetMigrateFailededVolumeNames(migrateFailedVols).
+		SetMigrateBackUpSucceededVolumeNames(migrateBackUpSucceedVols).
+		SetMigrateBackUpFailededVolumeNames(migrateBackUpFailedVols).
+		UpdateReplaceDiskStatus(m.rdhandler.ReplaceDiskStatus())
 	if err != nil {
 		m.logger.Errorf("waitMigrateTaskByLocalVolumeDone UpdateReplaceDiskStatus failed ... ")
 		return err
@@ -383,9 +406,7 @@ func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *api
 	}
 
 	var options []string
-
 	ctx := context.TODO()
-
 	nodeList := &lsapisv1alpha1.LocalStorageNodeList{}
 	if err := m.apiClient.List(ctx, nodeList); err != nil {
 		m.logger.WithError(err).Error("Failed to get NodeList")
@@ -448,10 +469,6 @@ func (m *manager) processOldReplaceDiskStatusFailed(replaceDisk *apisv1alpha1.Re
 	return nil
 }
 
-//func (m *manager) processNewReplaceDiskStatusInit(replaceDisk *apisv1alpha1.ReplaceDisk) error {
-//	return nil
-//}
-
 func (m *manager) processNewReplaceDiskStatusWaitDiskLVMRejoin(replaceDisk *apisv1alpha1.ReplaceDisk) error {
 	m.logger.Debug("processNewReplaceDiskStatusWaitDiskLVMRejoin start ... ")
 	err := m.waitDiskLVMRejoinDone(replaceDisk)
@@ -475,17 +492,32 @@ func (m *manager) waitDiskLVMRejoinDone(replaceDisk *apisv1alpha1.ReplaceDisk) e
 		return err
 	}
 
+	var retryNums int
+
 	for {
+		retryNums++
+		if m.rdhandler.CheckReplaceDiskTaskDestroyed(*replaceDisk) {
+			break
+		}
 		localDisk, err := m.getLocalDiskByDiskName(diskName, nodeName)
 		if err != nil {
 			m.logger.WithError(err).Error("waitDiskLVMRejoinDone: Failed to getLocalDiskByDiskName")
 			return err
 		}
 
-		m.logger.WithError(err).Errorf("waitDiskLVMRejoinDone getLocalDiskByDiskName localDisk.Status.State = %v", localDisk.Status.State)
-
+		m.logger.WithError(err).Errorf("waitDiskLVMRejoinDone getLocalDiskByDiskName localDisk.Status.State = %v, retryNums = %v", localDisk.Status.State, retryNums)
 		if localDisk.Status.State == ldm.LocalDiskClaimed {
 			break
+		}
+
+		if retryNums > 10 {
+			// 触发ld更新
+			err := m.updateLocalDisk(replaceDisk)
+			if err != nil {
+				log.Error(err, "processReplaceDisk NewDiskReplaceStatus updateLocalDisk failed")
+				return err
+			}
+			retryNums = 0
 		}
 	}
 	m.logger.Debug("waitDiskLVMRejoinDone end ... ")
@@ -501,6 +533,7 @@ func (m *manager) processNewReplaceDiskStatusWaitDataBackup(replaceDisk *apisv1a
 	}
 	migrateLocalVolumes := replaceDisk.Status.MigrateVolumeNames
 	var localVolumeList []lsapisv1alpha1.LocalVolume
+	m.logger.Debug("processNewReplaceDiskStatusWaitDataBackup migrateLocalVolumes = %v", migrateLocalVolumes)
 	for _, localVolumeName := range migrateLocalVolumes {
 		vol := &lsapisv1alpha1.LocalVolume{}
 		if err := m.apiClient.Get(context.TODO(), types.NamespacedName{Name: localVolumeName}, vol); err != nil {
@@ -519,7 +552,7 @@ func (m *manager) processNewReplaceDiskStatusWaitDataBackup(replaceDisk *apisv1a
 		localVolumeList = append(localVolumeList, *vol)
 	}
 
-	err := m.waitMigrateTaskByLocalVolumeDone(localVolumeList)
+	err := m.waitMigrateTaskByLocalVolumeDone(localVolumeList, MigrateType_BackUp)
 	if err != nil {
 		m.logger.WithError(err).Error("processNewReplaceDiskStatusWaitDataBackup: Failed to waitMigrateTaskByLocalVolumeDone")
 		return err
@@ -581,96 +614,6 @@ func (m *manager) getAllLocalVolumeAndReplicasMapOnDisk(diskName, nodeName strin
 	return localVolumeReplicasMap, nil
 }
 
-//func (m *manager) getReplicasForVolume(volName string) ([]*lsapisv1alpha1.LocalVolumeReplica, error) {
-//	m.logger.Debug("getReplicasForVolume start ... ")
-//
-//	replicaList := &lsapisv1alpha1.LocalVolumeReplicaList{}
-//	if err := m.apiClient.List(context.TODO(), replicaList); err != nil {
-//		return nil, err
-//	}
-//
-//	var replicas []*lsapisv1alpha1.LocalVolumeReplica
-//	for i := range replicaList.Items {
-//		if replicaList.Items[i].Spec.VolumeName == volName {
-//			replicas = append(replicas, &replicaList.Items[i])
-//		}
-//	}
-//	m.logger.Debug("getReplicasForVolume end ... ")
-//
-//	return replicas, nil
-//}
-
-//func (m *manager) isLocalVolumeReplicasAllNotReady(volName string) (bool, error) {
-//	m.logger.Debug("isLocalVolumeReplicasAllNotReady start ... ")
-//
-//	volumeRelicas, err := m.getReplicasForVolume(volName)
-//	if err != nil {
-//		return true, err
-//	}
-//	notReadyFlag, err := m.isReplicasForVolumeAllNotReady(volumeRelicas)
-//	if err != nil {
-//		return true, err
-//	}
-//
-//	m.logger.Debug("isLocalVolumeReplicasAllNotReady end ... ")
-//	return notReadyFlag, nil
-//}
-
-//func (m *manager) isReplicasForVolumeAllNotReady(replicas []*lsapisv1alpha1.LocalVolumeReplica) (bool, error) {
-//	m.logger.Debug("isReplicasForVolumeAllNotReady start ... ")
-//
-//	for _, replica := range replicas {
-//		if replica.Status.State == lsapisv1alpha1.VolumeReplicaStateReady {
-//			fmt.Print("Not all VolumeReplicas are not ready")
-//			return false, nil
-//		}
-//	}
-//	m.logger.Debug("isReplicasForVolumeAllNotReady end ... ")
-//
-//	return true, nil
-//}
-
-//func (m *manager) isReplicasForVolumeAllReady(replicas []*lsapisv1alpha1.LocalVolumeReplica) (bool, error) {
-//	m.logger.Debug("isReplicasForVolumeAllReady start ... ")
-//
-//	for _, replica := range replicas {
-//		if replica.Status.State == lsapisv1alpha1.VolumeReplicaStateNotReady {
-//			fmt.Print("Not all VolumeReplicas are ready")
-//			return false, nil
-//		}
-//	}
-//
-//	m.logger.Debug("isReplicasForVolumeAllReady end ... ")
-//
-//	return true, nil
-//}
-
-//func (m *manager) isReplicaOnDiskMaster(replica *lsapisv1alpha1.LocalVolumeReplica) (bool, error) {
-//	m.logger.Debug("isReplicaOnDiskMaster start ... ")
-//
-//	var volName = replica.Spec.VolumeName
-//	vol := &lsapisv1alpha1.LocalVolume{}
-//	if err := m.apiClient.Get(context.TODO(), types.NamespacedName{Name: volName}, vol); err != nil {
-//		if !errors.IsNotFound(err) {
-//			m.logger.Errorf("Failed to get Volume from cache, retry it later ...")
-//			return false, err
-//		}
-//		m.logger.Debugf("Not found the Volume from cache, should be deleted already.")
-//		return false, nil
-//	}
-//	if vol.Spec.Config != nil {
-//		for _, replicasVal := range vol.Spec.Config.Replicas {
-//			if replicasVal.Hostname == replica.Spec.NodeName {
-//				isPrimary := replicasVal.Primary
-//				return isPrimary, nil
-//			}
-//		}
-//	}
-//	m.logger.Debug("isReplicaOnDiskMaster end ... ")
-//
-//	return false, nil
-//}
-
 func (m *manager) CheckVolumeInReplaceDiskTask(nodeName, volName string) (bool, error) {
 	m.logger.Debug("CheckVolumeInReplaceDiskTask start ... ")
 
@@ -686,11 +629,6 @@ func (m *manager) CheckVolumeInReplaceDiskTask(nodeName, volName string) (bool, 
 
 	return false, nil
 }
-
-//func (m *manager) migrateLocalVolumeReplica(localVolumeReplicaName, nodeName string) error {
-//
-//	return nil
-//}
 
 func (m *manager) getAllLocalVolumesAndReplicasInRepalceDiskTask(nodeName string) (map[string][]*lsapisv1alpha1.LocalVolumeReplica, error) {
 	m.logger.Debug("getAllLocalVolumesAndReplicasInRepalceDiskTask start ... ")
@@ -772,6 +710,7 @@ func (m *manager) getDiskNameByDiskUUID(diskUUID, nodeName string) (string, erro
 	if err != nil {
 		return "", err
 	}
+
 	var diskName string
 	for _, ld := range ldList.Items {
 		if ld.Spec.NodeName == nodeName {
@@ -802,7 +741,7 @@ func (m *manager) updateLocalDisk(replaceDisk *apisv1alpha1.ReplaceDisk) error {
 		return err
 	}
 
-	localDisk.Spec.DiskAttributes.Product = "ReplaceDisk"
+	localDisk.Spec.DiskAttributes.Product = ReplaceDiskKind + strconv.Itoa(rand.Intn(1000))
 	err = m.localDiskController.UpdateLocalDisk(localDisk)
 	if err != nil {
 		m.logger.WithError(err).Error("updateLocalDisk: Failed to UpdateLocalDisk")

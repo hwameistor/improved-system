@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: hwameistor-improved-system
+  name: hwameistor-reliable-helper-system
   namespace: hwameistor
 spec:
   selector:
     matchLabels:
-      name: hwameistor-improved-system
+      name: hwameistor-reliable-helper-system
   template:
     metadata:
       labels:
-        name: hwameistor-improved-system
+        name: hwameistor-reliable-helper-system
     spec:
       hostNetwork: true
       hostPID: true
-      serviceAccountName: improved-system
+      serviceAccountName: reliable-helper-system
       containers:
-        - name: improved-system
+        - name: reliable-helper-system
           # Replace this with the built image name
           image: ghcr.io/hwameistor/reliable-helper-system:v0.0.1
           command:
-          - /improved-system
+          - /reliable-helper-system
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: udev
@@ -48,7 +48,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: OPERATOR_NAME
-              value: "improved-system"
+              value: "reliable-helper-system"
           securityContext:
             privileged: true
       volumes:

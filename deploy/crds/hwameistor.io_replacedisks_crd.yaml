@@ -56,6 +56,18 @@ spec:
               errMsg:
                 description: ErrMsg errMsg of the replaced disk
                 type: string
+              migrateBackUpFailededVolumeNames:
+                description: MigrateBackUpFailededVolumeNames migrateBackUpFailededVolumeNames
+                  of the replaced disk
+                items:
+                  type: string
+                type: array
+              migrateBackUpSucceededVolumeNames:
+                description: MigrateBackUpSucceededVolumeNames migrateBackUpSucceededVolumeNames
+                  of the replaced disk
+                items:
+                  type: string
+                type: array
               migrateFailededVolumeNames:
                 description: MigrateFailededVolumeNames migrateFailededVolumeNames
                   of the replaced disk

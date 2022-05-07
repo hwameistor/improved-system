@@ -72,8 +72,12 @@ type ReplaceDiskStatus struct {
 	MigrateVolumeNames []string `json:"migrateVolumeNames,omitempty"`
 	// MigrateSucceededVolumeNames migrateSucceededVolumeNames of the replaced disk
 	MigrateSucceededVolumeNames []string `json:"migrateSucceededVolumeNames,omitempty"`
+	// MigrateBackUpSucceededVolumeNames migrateBackUpSucceededVolumeNames of the replaced disk
+	MigrateBackUpSucceededVolumeNames []string `json:"migrateBackUpSucceededVolumeNames,omitempty"`
 	// MigrateFailededVolumeNames migrateFailededVolumeNames of the replaced disk
 	MigrateFailededVolumeNames []string `json:"migrateFailededVolumeNames,omitempty"`
+	// MigrateBackUpFailededVolumeNames migrateBackUpFailededVolumeNames of the replaced disk
+	MigrateBackUpFailededVolumeNames []string `json:"migrateBackUpFailededVolumeNames,omitempty"`
 	// ErrMsg errMsg of the replaced disk
 	ErrMsg string `json:"errMsg,omitempty"`
 }
