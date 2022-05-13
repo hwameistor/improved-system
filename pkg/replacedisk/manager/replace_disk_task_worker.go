@@ -249,6 +249,13 @@ func (m *manager) processOldReplaceDiskStatusWaitDataRepair(replaceDisk *apisv1a
 		return err
 	}
 
+	// todo
+	//localDisk, err := m.getLocalDiskByDiskName(oldDiskName, nodeName)
+	//if err != nil {
+	//	m.logger.WithError(err).Error("processOldReplaceDiskStatusWaitDiskLVMRelease: Failed to getLocalDiskByDiskName")
+	//	return err
+	//}
+
 	localVolumeReplicasMap, err := m.getAllLocalVolumeAndReplicasMapOnDisk(oldDiskName, replaceDisk.Spec.NodeName)
 	if err != nil {
 		logCtx.Errorf("processOldReplaceDiskStatusWaitDataRepair getAllLocalVolumeAndReplicasMapOnDisk failed err = %v", err)
@@ -267,12 +274,20 @@ func (m *manager) processOldReplaceDiskStatusWaitDataRepair(replaceDisk *apisv1a
 			log.Printf("Not found the Volume from cache, should be deleted already.")
 			return nil
 		}
+
+		if vol.Spec.ReplicaNumber == 1 && vol.Spec.Convertible == false {
+			err := fmt.Sprintf("The volume %v replicanumber is 1 and convertible is false , cannot do replacedisk task for the risk of dataloss", vol.Name)
+			m.rdhandler.SetErrMsg(err)
+			continue
+		}
+
 		err = m.createMigrateTaskByLocalVolume(*vol)
 		if err != nil {
 			log.Error(err, "createMigrateTaskByLocalVolume failed")
 			return err
 		}
 		migrateVolumeNames = append(migrateVolumeNames, vol.Name)
+
 		m.rdhandler.SetMigrateVolumeNames(migrateVolumeNames)
 		localVolumeList = append(localVolumeList, *vol)
 	}
@@ -294,6 +309,12 @@ func (m *manager) createMigrateTaskByLocalVolume(vol lsapisv1alpha1.LocalVolume)
 		log.Error(err, "createMigrateTaskByLocalVolume ConstructLocalVolumeMigrate failed")
 		return err
 	}
+	migrate := &lsapisv1alpha1.LocalVolumeMigrate{}
+	if err := m.apiClient.Get(context.TODO(), types.NamespacedName{Name: localVolumeMigrate.Name}, migrate); err == nil {
+		m.logger.Info("createMigrateTaskByLocalVolume localVolumeMigrate %v already exists.", localVolumeMigrate.Name)
+		return nil
+	}
+
 	err = m.migrateCtr.CreateLocalVolumeMigrate(*localVolumeMigrate)
 	if err != nil {
 		log.Error(err, "createMigrateTaskByLocalVolume CreateLocalVolumeMigrate failed")

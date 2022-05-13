@@ -171,7 +171,7 @@ func (rdHandler *ReplaceDiskHandler) SetMigrateBackUpFailededVolumeNames(volumeN
 
 // SetErrMsg
 func (rdHandler *ReplaceDiskHandler) SetErrMsg(errMsg string) *ReplaceDiskHandler {
-	rdHandler.ReplaceDisk.Status.ErrMsg = errMsg
+	rdHandler.ReplaceDisk.Status.ErrMsg = rdHandler.ReplaceDisk.Status.ErrMsg + "\n" + errMsg
 	return rdHandler
 }
 

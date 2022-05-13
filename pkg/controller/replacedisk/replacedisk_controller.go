@@ -106,6 +106,10 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	logr.Debug("Debug Reconciling ReplaceDisk", replaceDisk)
 
+	if replaceDisk.Status.ErrMsg != "" && replaceDisk.Spec.IgnoreUnconvertibleVolumeData == false {
+		return reconcile.Result{}, errors.NewBadRequest(replaceDisk.Status.ErrMsg)
+	}
+
 	rdhandler := replacediskmanager.NewReplaceDiskHandler(r.client, r.Recorder)
 	rdhandler = rdhandler.SetReplaceDisk(*replaceDisk)
 	replaceDiskStatus := rdhandler.ReplaceDiskStatus()

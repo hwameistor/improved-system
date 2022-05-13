@@ -31,6 +31,9 @@ spec:
           spec:
             description: ReplaceDiskSpec defines the desired state of ReplaceDisk
             properties:
+              ignoreUnconvertibleVolumeData:
+                description: IgnoreUnconvertibleVolumeData
+                type: boolean
               newUuid:
                 description: NewUUID global unique identifier of the new replaced
                   disk
