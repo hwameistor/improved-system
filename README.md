@@ -8,7 +8,7 @@ Reliable-helper-system will work for LVM volumes now. At present, the RHS projec
 
 ## Architecture of HwameiStor Reliable Helper System
 
-![image](https://github.com/hwameistor/reliable-helper-system/blob/main/doc/design/HwameiStor-arch.png)
+![image](https://github.com/hwameistor/reliable-helper-system/blob/main/doc/design/HwameiStor-replace-disk-arch.jpg)
 
 ## Concepts
 
