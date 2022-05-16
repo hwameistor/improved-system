@@ -249,12 +249,17 @@ func (m *manager) processOldReplaceDiskStatusWaitDataRepair(replaceDisk *apisv1a
 		return err
 	}
 
-	// todo
-	//localDisk, err := m.getLocalDiskByDiskName(oldDiskName, nodeName)
-	//if err != nil {
-	//	m.logger.WithError(err).Error("processOldReplaceDiskStatusWaitDiskLVMRelease: Failed to getLocalDiskByDiskName")
-	//	return err
-	//}
+	oldLocalDisk, err := m.getLocalDiskByDiskName(oldDiskName, replaceDisk.Spec.NodeName)
+	if err != nil {
+		m.logger.WithError(err).Error("processOldReplaceDiskStatusWaitDataRepair: Failed to getLocalDiskByDiskName")
+		return err
+	}
+
+	// directly replacedisk ; not do datarepair
+	if oldLocalDisk.Spec.HasRAID == true {
+		m.logger.Debug("processOldReplaceDiskStatusWaitDataRepair oldLocalDisk.Spec.HasRAID is true.")
+		return nil
+	}
 
 	localVolumeReplicasMap, err := m.getAllLocalVolumeAndReplicasMapOnDisk(oldDiskName, replaceDisk.Spec.NodeName)
 	if err != nil {
@@ -552,6 +557,25 @@ func (m *manager) processNewReplaceDiskStatusWaitDataBackup(replaceDisk *apisv1a
 	if replaceDisk == nil {
 		return errs.New("processNewReplaceDiskStatusWaitDataBackup replaceDisk is nil")
 	}
+
+	oldDiskName, err := m.getDiskNameByDiskUUID(replaceDisk.Spec.OldUUID, replaceDisk.Spec.NodeName)
+	if err != nil {
+		m.logger.Errorf("processNewReplaceDiskStatusWaitDataBackup getDiskNameByDiskUUID failed err = %v", err)
+		return err
+	}
+
+	oldLocalDisk, err := m.getLocalDiskByDiskName(oldDiskName, replaceDisk.Spec.NodeName)
+	if err != nil {
+		m.logger.WithError(err).Error("processNewReplaceDiskStatusWaitDataBackup: Failed to getLocalDiskByDiskName")
+		return err
+	}
+
+	// directly replacedisk ; no data backup
+	if oldLocalDisk.Spec.HasRAID == true {
+		m.logger.Debug("processNewReplaceDiskStatusWaitDataBackup oldLocalDisk.Spec.HasRAID is true.")
+		return nil
+	}
+
 	migrateLocalVolumes := replaceDisk.Status.MigrateVolumeNames
 	var localVolumeList []lsapisv1alpha1.LocalVolume
 	m.logger.Debug("processNewReplaceDiskStatusWaitDataBackup migrateLocalVolumes = %v", migrateLocalVolumes)
@@ -573,7 +597,7 @@ func (m *manager) processNewReplaceDiskStatusWaitDataBackup(replaceDisk *apisv1a
 		localVolumeList = append(localVolumeList, *vol)
 	}
 
-	err := m.waitMigrateTaskByLocalVolumeDone(localVolumeList, MigrateType_BackUp)
+	err = m.waitMigrateTaskByLocalVolumeDone(localVolumeList, MigrateType_BackUp)
 	if err != nil {
 		m.logger.WithError(err).Error("processNewReplaceDiskStatusWaitDataBackup: Failed to waitMigrateTaskByLocalVolumeDone")
 		return err
@@ -591,6 +615,29 @@ func (m manager) processNewReplaceDiskStatusDataBackuped(replaceDisk *apisv1alph
 
 // 统计结果并上报
 func (m *manager) processNewReplaceDiskStatusSucceed(replaceDisk *apisv1alpha1.ReplaceDisk) error {
+	if replaceDisk == nil {
+		return errs.New("processNewReplaceDiskStatusSucceed replaceDisk is nil")
+	}
+
+	oldDiskName, err := m.getDiskNameByDiskUUID(replaceDisk.Spec.OldUUID, replaceDisk.Spec.NodeName)
+	if err != nil {
+		m.logger.Errorf("processNewReplaceDiskStatusSucceed getDiskNameByDiskUUID failed err = %v", err)
+		return err
+	}
+
+	oldLocalDisk, err := m.getLocalDiskByDiskName(oldDiskName, replaceDisk.Spec.NodeName)
+	if err != nil {
+		m.logger.WithError(err).Error("processNewReplaceDiskStatusSucceed: Failed to getLocalDiskByDiskName")
+		return err
+	}
+
+	// directly replacedisk ; no data backup
+	if oldLocalDisk.Spec.HasRAID == true {
+		m.logger.Debug("processNewReplaceDiskStatusSucceed oldLocalDisk.Spec.HasRAID is true.")
+		err := fmt.Sprintf("Please Check Raid Device Status, If Not Ready, Repair It !")
+		m.rdhandler.SetErrMsg(err)
+		return nil
+	}
 	return nil
 }
 
