@@ -20,6 +20,8 @@ type ReplaceDiskSpec struct {
 	NodeName string `json:"nodeName,omitempty"`
 	// Init WaitDiskReplaced WaitSvcRestor Succeed
 	ReplaceDiskStage ReplaceDiskStage `json:"replaceDiskStage,omitempty"`
+	// IgnoreUnconvertibleVolumeData
+	IgnoreUnconvertibleVolumeData bool `json:"ignoreUnconvertibleVolumeData,omitempty"`
 }
 
 // ReplaceDiskStage defines the observed state of replaceDisk
