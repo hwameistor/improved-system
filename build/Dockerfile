@@ -2,6 +2,6 @@ FROM centos:7
 
 RUN yum install -y smartmontools lsscsi
 
-COPY ./_build/improved-system /improved-system
+COPY ./_build/reliable-helper-system /reliable-helper-system
 
-ENTRYPOINT [ "/improved-system" ]
+ENTRYPOINT [ "/reliable-helper-system" ]

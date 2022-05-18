@@ -24,7 +24,7 @@ CMDS_DIR = ${PROJECT_SOURCE_CODE_DIR}/cmd
 IMAGE_TAG ?= 99.9-dev
 RELEASE_TAG ?= $(shell tagged="$$(git describe --tags --match='v*' --abbrev=0 2> /dev/null)"; if [ "$$tagged" ] && [ "$$(git rev-list -n1 HEAD)" = "$$(git rev-list -n1 $$tagged)" ]; then echo $$tagged; fi)
 
-MODULE_NAME = improved-system
+MODULE_NAME = reliable-helper-system
 
 BUILDER_NAME = ${IMAGE_REGISTRY}/${MODULE_NAME}-builder
 BUILDER_TAG = latest
@@ -71,7 +71,7 @@ release:
 _gen-apis:
 	${OPERATOR_CMD} generate k8s
 	${OPERATOR_CMD} generate crds
-	GOPROXY=https://goproxy.cn,direct /code-generator/generate-groups.sh all github.com/hwameistor/improved-system/pkg/apis/client github.com/hwameistor/improved-system/pkg/apis "hwameistor:v1alpha1" --go-header-file /go/src/github.com/hwameistor/improved-system/build/boilerplate.go.txt
+	GOPROXY=https://goproxy.cn,direct /code-generator/generate-groups.sh all github.com/hwameistor/reliable-helper-system/pkg/apis/client github.com/hwameistor/reliable-helper-system/pkg/apis "hwameistor:v1alpha1" --go-header-file /go/src/github.com/hwameistor/reliable-helper-system/build/boilerplate.go.txt
 
 .PHONY: apis
 apis:

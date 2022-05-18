@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/hwameistor/improved-system/pkg/controller"
 	"os"
 	"path"
 	"runtime"
@@ -16,11 +15,12 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	"github.com/hwameistor/improved-system/pkg/apis"
-	replacediskmanager "github.com/hwameistor/improved-system/pkg/replacedisk/manager"
-	"github.com/hwameistor/improved-system/version"
 	ldmv1alpha1 "github.com/hwameistor/local-disk-manager/pkg/apis"
 	apisv1alpha1 "github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1"
+	"github.com/hwameistor/reliable-helper-system/pkg/apis"
+	"github.com/hwameistor/reliable-helper-system/pkg/controller"
+	replacediskmanager "github.com/hwameistor/reliable-helper-system/pkg/replacedisk/manager"
+	"github.com/hwameistor/reliable-helper-system/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
@@ -121,7 +121,7 @@ func main() {
 
 	//ctx := context.TODO()
 	// Become the leader before proceeding
-	//err = leader.Become(ctx, "improved-system-lock")
+	//err = leader.Become(ctx, "reliable-helper-system-lock")
 	//if err != nil {
 	//	log.Error(err, "")
 	//	os.Exit(1)

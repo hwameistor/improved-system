@@ -1,4 +1,4 @@
-package LocalVolumeMigrate
+package migrate
 
 const (
 	APIVersion                   = "v1alpha1"

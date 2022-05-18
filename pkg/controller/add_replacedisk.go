@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/hwameistor/improved-system/pkg/controller/replacedisk"
+	"github.com/hwameistor/reliable-helper-system/pkg/controller/replacedisk"
 )
 
 func init() {

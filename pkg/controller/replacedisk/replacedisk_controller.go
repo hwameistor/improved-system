@@ -2,9 +2,9 @@ package replacedisk
 
 import (
 	"context"
-	"github.com/hwameistor/improved-system/pkg/apis"
-	apisv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
-	replacediskmanager "github.com/hwameistor/improved-system/pkg/replacedisk/manager"
+	"github.com/hwameistor/reliable-helper-system/pkg/apis"
+	apisv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/hwameistor/v1alpha1"
+	replacediskmanager "github.com/hwameistor/reliable-helper-system/pkg/replacedisk/manager"
 	logr "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -109,28 +109,22 @@ func (r *ReconcileReplaceDisk) Reconcile(request reconcile.Request) (reconcile.R
 	rdhandler := replacediskmanager.NewReplaceDiskHandler(r.client, r.Recorder)
 	rdhandler = rdhandler.SetReplaceDisk(*replaceDisk)
 	replaceDiskStatus := rdhandler.ReplaceDiskStatus()
-	err = rdhandler.Refresh()
-	if err != nil {
-		logr.Error("Reconciling Refresh err", err)
-		return reconcile.Result{}, err
-	}
 	logr.Debug("replaceDisk.Spec.ReplaceDiskStage = %v, replaceDiskStatus = %v", replaceDisk.Spec.ReplaceDiskStage.String(), replaceDiskStatus)
 
 	switch replaceDisk.Spec.ReplaceDiskStage {
 	case "":
-		if replaceDiskStatus.OldDiskReplaceStatus == "" && replaceDiskStatus.NewDiskReplaceStatus == "" {
-			rdhandler = rdhandler.SetReplaceDiskStage(apisv1alpha1.ReplaceDiskStage_Init)
-			err := rdhandler.UpdateReplaceDiskCR()
-			if err != nil {
-				logr.Error(err, "UpdateReplaceDiskCR SetReplaceDiskStage ReplaceDiskStage_Init failed")
-				return reconcile.Result{Requeue: true}, nil
-			}
-			replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
-			replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
-			if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
-				logr.Error(err, "ReplaceDiskStage_Init UpdateReplaceDiskStatus ReplaceDisk_Init,ReplaceDisk_Init failed")
-				return reconcile.Result{Requeue: true}, nil
-			}
+		logr.Debug("replaceDisk.Spec.ReplaceDiskStage = %v, replaceDiskStatus = %v", rdhandler.ReplaceDiskStage().String(), rdhandler.ReplaceDiskStatus())
+		rdhandler = rdhandler.SetReplaceDiskStage(apisv1alpha1.ReplaceDiskStage_Init)
+		err := rdhandler.UpdateReplaceDiskCR()
+		if err != nil {
+			logr.Error(err, "UpdateReplaceDiskCR SetReplaceDiskStage ReplaceDiskStage_Init failed")
+			return reconcile.Result{Requeue: true}, nil
+		}
+		replaceDiskStatus.OldDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+		replaceDiskStatus.NewDiskReplaceStatus = apisv1alpha1.ReplaceDisk_Init
+		if err := rdhandler.UpdateReplaceDiskStatus(replaceDiskStatus); err != nil {
+			logr.Error(err, "ReplaceDiskStage_Init UpdateReplaceDiskStatus ReplaceDisk_Init,ReplaceDisk_Init failed")
+			return reconcile.Result{Requeue: true}, nil
 		}
 
 		logr.Debug("replaceDisk.Spec.ReplaceDiskStage = %v, replaceDiskStatus = %v", rdhandler.ReplaceDiskStage().String(), rdhandler.ReplaceDiskStatus())

@@ -1,8 +1,8 @@
 package manager
 
 import (
-	"github.com/hwameistor/improved-system/pkg/exechelper"
-	"github.com/hwameistor/improved-system/pkg/exechelper/nsexecutor"
+	"github.com/hwameistor/reliable-helper-system/pkg/exechelper"
+	"github.com/hwameistor/reliable-helper-system/pkg/exechelper/nsexecutor"
 )
 
 type lvmExecutor struct {
@@ -36,6 +36,7 @@ func (lvm *lvmExecutor) vgreduce(vgName, diskpath string, options []string) erro
 func (lvm *lvmExecutor) pvremove(vgName, diskpath string, options []string) error {
 	params := exechelper.ExecParams{
 		CmdName: "pvmove",
+		//CmdArgs: []string{diskpath, "--force", "--force"},
 		CmdArgs: []string{diskpath},
 	}
 	params.CmdArgs = append(params.CmdArgs, options...)

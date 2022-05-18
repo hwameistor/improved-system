@@ -2,15 +2,14 @@ package manager
 
 import (
 	"context"
-	"github.com/hwameistor/improved-system/pkg/apis"
-	apisv1alpha1 "github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
-	migratepkg "github.com/hwameistor/improved-system/pkg/migrate"
-	"github.com/hwameistor/improved-system/pkg/replacedisk/node"
-	"github.com/hwameistor/improved-system/pkg/utils"
 	ldctr "github.com/hwameistor/local-disk-manager/pkg/controller/localdisk"
 	"github.com/hwameistor/local-disk-manager/pkg/localdisk"
+	"github.com/hwameistor/reliable-helper-system/pkg/apis"
+	apisv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/hwameistor/v1alpha1"
+	migratepkg "github.com/hwameistor/reliable-helper-system/pkg/migrate"
+	"github.com/hwameistor/reliable-helper-system/pkg/replacedisk/node"
+	"github.com/hwameistor/reliable-helper-system/pkg/utils"
 	log "github.com/sirupsen/logrus"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -62,7 +61,9 @@ func New(mgr mgrpkg.Manager) (apis.ReplaceDiskManager, error) {
 }
 
 func (m *manager) Run(stopCh <-chan struct{}) {
+
 	go m.startReplaceDiskTaskWorker(stopCh)
+
 }
 
 func (m *manager) ReplaceDiskNodeManager() apis.ReplaceDiskNodeManager {
@@ -91,8 +92,8 @@ func NewReplaceDiskHandler(client client.Client, recorder record.EventRecorder) 
 func (rdHandler *ReplaceDiskHandler) ListReplaceDisk() (*apisv1alpha1.ReplaceDiskList, error) {
 	list := &apisv1alpha1.ReplaceDiskList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "ReplaceDisk",
-			APIVersion: "v1alpha1",
+			Kind:       ReplaceDiskKind,
+			APIVersion: ReplaceDiskAPIVersion,
 		},
 	}
 
@@ -123,13 +124,13 @@ func (rdHandler *ReplaceDiskHandler) UpdateReplaceDiskStatus(status apisv1alpha1
 }
 
 // Refresh
-func (rdHandler *ReplaceDiskHandler) Refresh() error {
+func (rdHandler *ReplaceDiskHandler) Refresh() (*ReplaceDiskHandler, error) {
 	rd, err := rdHandler.GetReplaceDisk(client.ObjectKey{Name: rdHandler.ReplaceDisk.GetName(), Namespace: rdHandler.ReplaceDisk.GetNamespace()})
 	if err != nil {
-		return err
+		return rdHandler, err
 	}
 	rdHandler.SetReplaceDisk(*rd.DeepCopy())
-	return nil
+	return rdHandler, nil
 }
 
 // SetReplaceDisk
@@ -150,9 +151,21 @@ func (rdHandler *ReplaceDiskHandler) SetMigrateSucceededVolumeNames(volumeNames 
 	return rdHandler
 }
 
+// SetMigrateBackUpSucceededVolumeNames
+func (rdHandler *ReplaceDiskHandler) SetMigrateBackUpSucceededVolumeNames(volumeNames []string) *ReplaceDiskHandler {
+	rdHandler.ReplaceDisk.Status.MigrateBackUpSucceededVolumeNames = volumeNames
+	return rdHandler
+}
+
 // SetMigrateFailededVolumeNames
 func (rdHandler *ReplaceDiskHandler) SetMigrateFailededVolumeNames(volumeNames []string) *ReplaceDiskHandler {
 	rdHandler.ReplaceDisk.Status.MigrateFailededVolumeNames = volumeNames
+	return rdHandler
+}
+
+// SetMigrateBackUpFailededVolumeNames
+func (rdHandler *ReplaceDiskHandler) SetMigrateBackUpFailededVolumeNames(volumeNames []string) *ReplaceDiskHandler {
+	rdHandler.ReplaceDisk.Status.MigrateBackUpFailededVolumeNames = volumeNames
 	return rdHandler
 }
 
@@ -181,4 +194,17 @@ func (rdHandler *ReplaceDiskHandler) SetReplaceDiskStage(stage apisv1alpha1.Repl
 // UpdateReplaceDiskCR
 func (rdHandler *ReplaceDiskHandler) UpdateReplaceDiskCR() error {
 	return rdHandler.Update(context.Background(), &rdHandler.ReplaceDisk)
+}
+
+// SetReplaceDisk
+func (rdHandler *ReplaceDiskHandler) CheckReplaceDiskTaskDestroyed(rd apisv1alpha1.ReplaceDisk) bool {
+	_, err := rdHandler.GetReplaceDisk(client.ObjectKey{Name: rd.Name, Namespace: rd.Namespace})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return true
+		}
+		return false
+	}
+
+	return false
 }

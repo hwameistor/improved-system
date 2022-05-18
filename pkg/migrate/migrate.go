@@ -1,4 +1,4 @@
-package LocalVolumeMigrate
+package migrate
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 
-	"github.com/hwameistor/improved-system/pkg/utils"
 	lsapisv1alpha1 "github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1"
+	"github.com/hwameistor/reliable-helper-system/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	crmanager "sigs.k8s.io/controller-runtime/pkg/manager"
 )

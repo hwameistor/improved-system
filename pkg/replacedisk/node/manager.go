@@ -1,10 +1,10 @@
 package node
 
 import (
-	"github.com/hwameistor/improved-system/pkg/apis"
-	"github.com/hwameistor/improved-system/pkg/apis/hwameistor/v1alpha1"
-	"github.com/hwameistor/improved-system/pkg/common"
-	"github.com/hwameistor/improved-system/pkg/utils"
+	"github.com/hwameistor/reliable-helper-system/pkg/apis"
+	"github.com/hwameistor/reliable-helper-system/pkg/apis/hwameistor/v1alpha1"
+	"github.com/hwameistor/reliable-helper-system/pkg/common"
+	"github.com/hwameistor/reliable-helper-system/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 
