@@ -6,7 +6,7 @@
 **「DaoCloud  道客」正式开源「云原生自动可靠本地存储维护系统HwameiStor Reliable Helper System」**。目前尚在Alpha阶段。
 HwameiStor 将 HDD、SSD 和 NVMe 磁盘形成本地存储资源池进行统一管理，而在磁盘作为上层应用使用的底层数据底座，面临自然和人为损坏等风险，因而磁盘运维维护管理系统Reliable Helper System 诞生。**欢迎广大技术开发者和爱好者前去试用**。
 
-![系统架构](doc/design/HwameiStor-replace-disk-arch.jpg)
+![系统架构](design/HwameiStor-replace-disk-arch.jpg)
 
 在云原生时代， 应用开发者可以专注于业务逻辑本身，而应用运行时所需的敏捷性、扩展性、可靠性等，则下沉到基础设施软件和运维团队。**HwameiStor Reliable Helper System正是满足云原生时代要求的可靠性运维系统，目前支持一键更换磁盘功能**。
 
