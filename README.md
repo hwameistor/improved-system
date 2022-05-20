@@ -22,29 +22,53 @@ If you want to entirely deploy HwameiStor, please refer to [here](https://github
 ## Install Reliable Helper System
 
 ### 1. Clone this repo to your machine:
-```
+```console
 # git clone https://github.com/hwameistor/reliable-helper-system.git
 ```
 
 ### 2. Change to deploy directory:
-```
+```console
 # cd deploy
 ```
 
 ### 3. Deploy CRDs and run reliable-helper-system
 
 #### 3.1 Deploy RHS CRDs
-```
+```console
 # kubectl apply -f deploy/crds/
 ```
 
 #### 3.2 Deploy RBAC CRs and operators
-```
+```console
 # kubectl apply -f deploy/
 ```
 
-### 4. Get ReplaceDisk Infomation
+#### 3.3 Deploy RHS Instance
+```console
+# cd deploy/samples
 ```
+
+```console
+cat > ./replacedisk_cr.yaml <<- EOF
+apiVersion: hwameistor.io/v1alpha1
+kind: ReplaceDisk
+metadata:
+  name: <anyname>
+  namespace: hwameistor
+spec:
+  nodeName: <node-name>
+  oldUuid: <old-uuid>
+  newUuid: <new-uuid>
+  replaceDiskStage: ""
+EOF
+```
+
+```console
+$ kubectl apply -f ./replacedisk_cr.yaml
+```
+
+### 4. Get ReplaceDisk Infomation
+```console
 kubectl  get replacedisk
 NAME                       AGE
 replacedisk-sample-node1   21h
