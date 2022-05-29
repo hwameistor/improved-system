@@ -56,6 +56,9 @@ metadata:
   name: <anyname>
   namespace: hwameistor
 spec:
+  driverGroup: <driver-group>
+  sltId: <sltid>
+  eId: <eid>
   nodeName: <node-name>
   oldUuid: <old-uuid>
   newUuid: <new-uuid>
