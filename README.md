@@ -69,7 +69,7 @@ $ kubectl apply -f ./replacedisk_cr.yaml
 
 ### 4. Get ReplaceDisk Infomation
 ```console
-kubectl  get replacedisk
+$ kubectl  get replacedisk
 NAME                       AGE
 replacedisk-sample-node1   21h
 

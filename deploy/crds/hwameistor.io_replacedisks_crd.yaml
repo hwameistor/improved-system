@@ -31,6 +31,10 @@ spec:
           spec:
             description: ReplaceDiskSpec defines the desired state of ReplaceDisk
             properties:
+              driverGroup:
+                type: string
+              eId:
+                type: string
               ignoreUnconvertibleVolumeData:
                 description: IgnoreUnconvertibleVolumeData
                 type: boolean
@@ -50,6 +54,8 @@ spec:
                 type: string
               replaceDiskStage:
                 description: Init WaitDiskReplaced WaitSvcRestor Succeed
+                type: string
+              sltId:
                 type: string
             type: object
           status:
@@ -98,6 +104,9 @@ spec:
                   code after modifying this file Add custom validation using kubebuilder
                   tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
                   Init WaitDataRepair WaitDiskLVMRelease WaitDiskRemoved'
+                type: string
+              warnMsg:
+                description: WarnMsg warnMsg of the replaced disk
                 type: string
             type: object
         type: object
