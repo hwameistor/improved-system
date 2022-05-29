@@ -267,7 +267,9 @@ func (m *manager) processOldReplaceDiskStatusWaitDataRepair(replaceDisk *apisv1a
 
 		var unusualDiskCount int
 		for _, raidDisk := range oldLocalDisk.Spec.RAIDInfo.RaidDiskList {
-			if raidDisk.RAIDDiskState == ldm.RAIDDiskStateOffln || raidDisk.RAIDDiskState == ldm.RAIDDiskStateMissing || raidDisk.RAIDDiskState == ldm.RAIDDiskStateRbld {
+			if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOffln)) ||
+				strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateMissing)) ||
+				strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
 				unusualDiskCount++
 			}
 		}
@@ -468,18 +470,19 @@ func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *api
 				m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease raidDisk.SlotNo = %v,replaceDisk.Spec.SltId = %v", raidDisk.SlotNo, replaceDisk.Spec.SltId)
 
 				if raidDisk.DriveGroup == replaceDisk.Spec.DriverGroup && raidDisk.SlotNo == replaceDisk.Spec.SltId {
-					if raidDisk.RAIDDiskState == ldm.RAIDDiskStateMissing {
-						warnMsg := fmt.Sprintf("Verify that the raidState is in a RAIDStateDgrd state, now the replaced disk is in a missing state，please plug old replaced disk !")
+					m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease string(raidDisk.RAIDDiskState) = %v", string(raidDisk.RAIDDiskState))
+					if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
+						warnMsg := fmt.Sprintf("Verify that the raidState is in a RAIDStateDgrd state, now the replaced disk is in a Rbld state，please plug old replaced disk !")
 						m.rdhandler.SetWarnMsg(warnMsg)
 						return errors.NewBadRequest(warnMsg)
 					}
-					if raidDisk.RAIDDiskState == ldm.RAIDDiskStateOffln {
+					if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOffln)) {
 						warnMsg := fmt.Sprintf("Verify that the hard disk is in a missing state, now the replaced disk is in a offline state，plz execute commands as follows !")
 						warnMsg += fmt.Sprintf("[1]. storcli /c<ctrlId>/e<EID>/s<Slt> set missing !")
 						m.rdhandler.SetWarnMsg(warnMsg)
 						return errors.NewBadRequest(warnMsg)
 					}
-					if raidDisk.RAIDDiskState == ldm.RAIDDiskStateOnln {
+					if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOnln)) {
 						warnMsg := fmt.Sprintf("Verify that the hard disk is in a missing state, now the replaced disk is in a online state，plz execute commands as follows !")
 						warnMsg += fmt.Sprintf("[1]. storcli /c<ctrlId>/e<EID>/s<Slt> set offline \n !")
 						warnMsg += fmt.Sprintf("[2]. storcli /c<ctrlId>/e<EID>/s<Slt> set missing !")
@@ -602,7 +605,7 @@ func (m *manager) waitDiskLVMRejoinDone(replaceDisk *apisv1alpha1.ReplaceDisk) e
 				m.logger.Debug("waitDiskLVMRejoinDone localDisk.Spec.RAIDInfo.RaidState is RAIDStateDgrd.")
 				for _, raidDisk := range localDisk.Spec.RAIDInfo.RaidDiskList {
 					if raidDisk.DriveGroup == replaceDisk.Spec.DriverGroup && raidDisk.SlotNo == replaceDisk.Spec.SltId {
-						if raidDisk.RAIDDiskState == ldm.RAIDDiskStateRbld {
+						if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
 							warnMsg := fmt.Sprintf("Now the replaced disk is in a RAIDDiskStateRbld state, wait for it rebuilded complete !")
 							m.rdhandler.SetWarnMsg(warnMsg)
 							continue
