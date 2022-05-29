@@ -472,7 +472,7 @@ func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *api
 				if raidDisk.DriveGroup == replaceDisk.Spec.DriverGroup && raidDisk.SlotNo == replaceDisk.Spec.SltId {
 					m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease string(raidDisk.RAIDDiskState) = %v", string(raidDisk.RAIDDiskState))
 					if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
-						warnMsg := fmt.Sprintf("Verify that the raidState is in a RAIDStateDgrd state, now the replaced disk is in a Rbld state，please plug old replaced disk !")
+						warnMsg := fmt.Sprintf("Verify that the raidState is in a RAIDStateDgrd state, now the replaced disk is in a missing state，please plug old replaced disk !")
 						m.rdhandler.SetWarnMsg(warnMsg)
 						return errors.NewBadRequest(warnMsg)
 					}
