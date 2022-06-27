@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/hwameistor/local-disk-manager v0.1.0
-	github.com/hwameistor/local-storage v0.1.7
+	github.com/hwameistor/local-storage v0.1.10
 	github.com/operator-framework/operator-sdk v0.18.2
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/pflag v1.0.5
