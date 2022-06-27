@@ -67,6 +67,7 @@ type RaidDisk struct {
 // RAIDInfo contains infos of raid
 type RAIDInfo struct {
 	// RAIDMaster is the master of the RAID disk, it works for only RAID slave disk, e.g. /dev/bus/0
+	RAIDMaster string `json:"raidMaster,omitempty"`
 	//RaidMaster string    `json:"raidMaster,omitempty"`
 	RaidName  string    `json:"raidName,omitempty"`
 	RaidType  RaidType  `json:"raidType,omitempty"`

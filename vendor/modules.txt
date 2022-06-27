@@ -102,7 +102,7 @@ github.com/hwameistor/local-disk-manager/pkg/filter
 github.com/hwameistor/local-disk-manager/pkg/localdisk
 github.com/hwameistor/local-disk-manager/pkg/utils
 github.com/hwameistor/local-disk-manager/pkg/utils/sys
-# github.com/hwameistor/local-storage v0.1.7
+# github.com/hwameistor/local-storage v0.1.10
 ## explicit; go 1.17
 github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1
 # github.com/imdario/mergo v0.3.9
