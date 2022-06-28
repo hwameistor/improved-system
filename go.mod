@@ -3,7 +3,7 @@ module github.com/hwameistor/reliable-helper-system
 go 1.17
 
 require (
-	github.com/hwameistor/local-disk-manager v0.1.0
+	github.com/hwameistor/local-disk-manager v0.1.6
 	github.com/hwameistor/local-storage v0.1.10
 	github.com/operator-framework/operator-sdk v0.18.2
 	github.com/sirupsen/logrus v1.6.0
@@ -23,6 +23,7 @@ require (
 	github.com/Azure/go-autorest/tracing v0.5.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/container-storage-interface/spec v1.3.0 // indirect
 	github.com/coreos/prometheus-operator v0.38.1-0.20200424145508-7e176fda06cc // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
@@ -61,9 +62,10 @@ require (
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
-	golang.org/x/tools v0.1.1 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.0.1 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
+	google.golang.org/genproto v0.0.0-20200117163144-32f20d992d24 // indirect
+	google.golang.org/grpc v1.27.0 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
