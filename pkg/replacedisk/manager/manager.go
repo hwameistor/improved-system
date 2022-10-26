@@ -2,8 +2,8 @@ package manager
 
 import (
 	"context"
-	ldctr "github.com/hwameistor/local-disk-manager/pkg/controller/localdisk"
-	"github.com/hwameistor/local-disk-manager/pkg/localdisk"
+	"github.com/hwameistor/hwameistor/pkg/local-disk-manager/localdisk"
+	localdiskhandler "github.com/hwameistor/hwameistor/pkg/local-disk-manager/handler/localdisk"
 	"github.com/hwameistor/reliable-helper-system/pkg/apis"
 	apisv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/hwameistor/v1alpha1"
 	migratepkg "github.com/hwameistor/reliable-helper-system/pkg/migrate"
@@ -34,7 +34,7 @@ type manager struct {
 
 	localDiskController localdisk.Controller
 
-	ldhandler *ldctr.LocalDiskHandler
+	ldhandler *localdiskhandler.LocalDiskHandler
 
 	mgr mgrpkg.Manager
 
@@ -54,7 +54,7 @@ func New(mgr mgrpkg.Manager) (apis.ReplaceDiskManager, error) {
 		migrateCtr:          migratepkg.NewController(mgr),
 		mgr:                 mgr,
 		localDiskController: localdisk.NewController(mgr),
-		ldhandler:           ldctr.NewLocalDiskHandler(mgr.GetClient(), recorder),
+		ldhandler:           localdiskhandler.NewLocalDiskHandler(mgr.GetClient(), recorder),
 		cmdExec:             NewLVMExecutor(),
 		logger:              log.WithField("Module", "ReplaceDisk"),
 	}, nil

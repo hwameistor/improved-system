@@ -10,9 +10,11 @@ import (
 	"sync"
 	"time"
 
-	ldm "github.com/hwameistor/local-disk-manager/pkg/apis/hwameistor/v1alpha1"
-	"github.com/hwameistor/local-disk-manager/pkg/controller/localdisk"
-	lsapisv1alpha1 "github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1"
+	// ldm "github.com/hwameistor/local-disk-manager/pkg/apis/hwameistor/v1alpha1"
+	hwameistorv1alpha1 "github.com/hwameistor/hwameistor/pkg/apis/hwameistor/v1alpha1"
+	// "github.com/hwameistor/local-disk-manager/pkg/controller/localdisk"
+	localdiskhandler "github.com/hwameistor/hwameistor/pkg/local-disk-manager/handler/localdisk"
+	// lsapisv1alpha1 "github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1"
 	apisv1alpha1 "github.com/hwameistor/reliable-helper-system/pkg/apis/hwameistor/v1alpha1"
 	"github.com/hwameistor/reliable-helper-system/pkg/utils"
 	log "github.com/sirupsen/logrus"
@@ -249,37 +251,37 @@ func (m *manager) processOldReplaceDiskStatusWaitDataRepair(replaceDisk *apisv1a
 		return err
 	}
 
-	oldLocalDisk, err := m.getLocalDiskByDiskName(oldDiskName, replaceDisk.Spec.NodeName)
-	if err != nil {
-		m.logger.WithError(err).Error("processOldReplaceDiskStatusWaitDataRepair: Failed to getLocalDiskByDiskName")
-		return err
-	}
+	// oldLocalDisk, err := m.getLocalDiskByDiskName(oldDiskName, replaceDisk.Spec.NodeName)
+	// if err != nil {
+	// 	m.logger.WithError(err).Error("processOldReplaceDiskStatusWaitDataRepair: Failed to getLocalDiskByDiskName")
+	// 	return err
+	// }
 
 	// directly replacedisk ; not do datarepair
-	if oldLocalDisk.Spec.HasRAID == true {
-		m.logger.Debug("processOldReplaceDiskStatusWaitDataRepair oldLocalDisk.Spec.HasRAID is true.")
+	// if oldLocalDisk.Spec.HasRAID == true {
+	// 	m.logger.Debug("processOldReplaceDiskStatusWaitDataRepair oldLocalDisk.Spec.HasRAID is true.")
 
-		if oldLocalDisk.Spec.RAIDInfo.RaidType != ldm.RaidType5 {
-			err := fmt.Sprintf("Now ReplaceDiskTask only support RaidType5, but current RaidType is %v = !", oldLocalDisk.Spec.RAIDInfo.RaidType)
-			m.rdhandler.SetErrMsg(err)
-			return errors.NewBadRequest(err)
-		}
+	// 	if oldLocalDisk.Spec.RAIDInfo.RaidType != ldm.RaidType5 {
+	// 		err := fmt.Sprintf("Now ReplaceDiskTask only support RaidType5, but current RaidType is %v = !", oldLocalDisk.Spec.RAIDInfo.RaidType)
+	// 		m.rdhandler.SetErrMsg(err)
+	// 		return errors.NewBadRequest(err)
+	// 	}
 
-		var unusualDiskCount int
-		for _, raidDisk := range oldLocalDisk.Spec.RAIDInfo.RaidDiskList {
-			if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOffln)) ||
-				strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateMissing)) ||
-				strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
-				unusualDiskCount++
-			}
-		}
-		if unusualDiskCount >= 2 {
-			err := fmt.Sprintf("The raid group has damaged more than two disks, cannot do replacedisk task for the risk of dataloss")
-			m.rdhandler.SetErrMsg(err)
-			return errors.NewBadRequest(err)
-		}
-		return nil
-	}
+	// 	var unusualDiskCount int
+	// 	for _, raidDisk := range oldLocalDisk.Spec.RAIDInfo.RaidDiskList {
+	// 		if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOffln)) ||
+	// 			strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateMissing)) ||
+	// 			strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
+	// 			unusualDiskCount++
+	// 		}
+	// 	}
+	// 	if unusualDiskCount >= 2 {
+	// 		err := fmt.Sprintf("The raid group has damaged more than two disks, cannot do replacedisk task for the risk of dataloss")
+	// 		m.rdhandler.SetErrMsg(err)
+	// 		return errors.NewBadRequest(err)
+	// 	}
+	// 	return nil
+	// }
 
 	localVolumeReplicasMap, err := m.getAllLocalVolumeAndReplicasMapOnDisk(oldDiskName, replaceDisk.Spec.NodeName)
 	if err != nil {
@@ -288,9 +290,9 @@ func (m *manager) processOldReplaceDiskStatusWaitDataRepair(replaceDisk *apisv1a
 	}
 
 	var migrateVolumeNames []string
-	var localVolumeList []lsapisv1alpha1.LocalVolume
+	var localVolumeList []hwameistorv1alpha1.LocalVolume
 	for localVolumeName := range localVolumeReplicasMap {
-		vol := &lsapisv1alpha1.LocalVolume{}
+		vol := &hwameistorv1alpha1.LocalVolume{}
 		if err = m.apiClient.Get(context.TODO(), types.NamespacedName{Name: localVolumeName}, vol); err != nil {
 			if !errors.IsNotFound(err) {
 				log.Errorf("Failed to get Volume from cache, retry it later ...")
@@ -326,7 +328,7 @@ func (m *manager) processOldReplaceDiskStatusWaitDataRepair(replaceDisk *apisv1a
 	return err
 }
 
-func (m *manager) createMigrateTaskByLocalVolume(vol lsapisv1alpha1.LocalVolume) error {
+func (m *manager) createMigrateTaskByLocalVolume(vol hwameistorv1alpha1.LocalVolume) error {
 	m.logger.Debug("createMigrateTaskByLocalVolume start ... ")
 
 	localVolumeMigrate, err := m.migrateCtr.ConstructLocalVolumeMigrate(vol)
@@ -334,7 +336,7 @@ func (m *manager) createMigrateTaskByLocalVolume(vol lsapisv1alpha1.LocalVolume)
 		log.Error(err, "createMigrateTaskByLocalVolume ConstructLocalVolumeMigrate failed")
 		return err
 	}
-	migrate := &lsapisv1alpha1.LocalVolumeMigrate{}
+	migrate := &hwameistorv1alpha1.LocalVolumeMigrate{}
 	if err := m.apiClient.Get(context.TODO(), types.NamespacedName{Name: localVolumeMigrate.Name}, migrate); err == nil {
 		m.logger.Info("createMigrateTaskByLocalVolume localVolumeMigrate %v already exists.", localVolumeMigrate.Name)
 		return nil
@@ -351,7 +353,7 @@ func (m *manager) createMigrateTaskByLocalVolume(vol lsapisv1alpha1.LocalVolume)
 }
 
 // 统计数据迁移情况
-func (m *manager) waitMigrateTaskByLocalVolumeDone(volList []lsapisv1alpha1.LocalVolume, migrateType string) error {
+func (m *manager) waitMigrateTaskByLocalVolumeDone(volList []hwameistorv1alpha1.LocalVolume, migrateType string) error {
 	m.logger.Debug("waitMigrateTaskByLocalVolumeDone start ... ")
 	var wg sync.WaitGroup
 	var migrateSucceedVols = m.rdhandler.ReplaceDiskStatus().MigrateSucceededVolumeNames
@@ -368,12 +370,12 @@ func (m *manager) waitMigrateTaskByLocalVolumeDone(volList []lsapisv1alpha1.Loca
 					log.Error(err, "waitMigrateTaskByLocalVolumeDone GetLocalVolumeMigrateStatusByLocalVolume failed")
 					return
 				}
-				if migrateStatus.State == lsapisv1alpha1.OperationStateSubmitted || migrateStatus.State == lsapisv1alpha1.OperationStateInProgress {
+				if migrateStatus.State == hwameistorv1alpha1.OperationStateSubmitted || migrateStatus.State == hwameistorv1alpha1.OperationStateInProgress {
 					time.Sleep(2 * time.Second)
 					continue
 				}
-				if migrateStatus.State == lsapisv1alpha1.OperationStateAborted || migrateStatus.State == lsapisv1alpha1.OperationStateAborting ||
-					migrateStatus.State == lsapisv1alpha1.OperationStateToBeAborted {
+				if migrateStatus.State == hwameistorv1alpha1.OperationStateAborted || migrateStatus.State == hwameistorv1alpha1.OperationStateAborting ||
+					migrateStatus.State == hwameistorv1alpha1.OperationStateToBeAborted {
 					if migrateType == MigrateType_DataRepair {
 						migrateFailedVols = append(migrateFailedVols, vol.Name)
 					}
@@ -408,7 +410,7 @@ func (m *manager) waitMigrateTaskByLocalVolumeDone(volList []lsapisv1alpha1.Loca
 	return nil
 }
 
-func (m *manager) getLocalDiskByDiskName(diskName, nodeName string) (ldm.LocalDisk, error) {
+func (m *manager) getLocalDiskByDiskName(diskName, nodeName string) (hwameistorv1alpha1.LocalDisk, error) {
 	m.logger.Debug("getLocalDiskByDiskName start ... ")
 	// replacedDiskName e.g.(/dev/sdb -> sdb)
 	var replacedDiskName string
@@ -452,57 +454,57 @@ func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *api
 
 	ldhandler := m.ldhandler.For(*ldisk)
 
-	if localDisk.Spec.HasRAID == true {
-		m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease localDisk.Spec.HasRAID is true.")
+	// if localDisk.Spec.HasRAID == true {
+	// 	m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease localDisk.Spec.HasRAID is true.")
 
-		if localDisk.Spec.RAIDInfo.RaidType != ldm.RaidType5 {
-			err := fmt.Sprintf("Now ReplaceDiskTask only support RaidType5, but current RaidType is %v = !", localDisk.Spec.RAIDInfo.RaidType)
-			m.rdhandler.SetErrMsg(err)
-			return errors.NewBadRequest(err)
-		}
+	// 	if localDisk.Spec.RAIDInfo.RaidType != ldm.RaidType5 {
+	// 		err := fmt.Sprintf("Now ReplaceDiskTask only support RaidType5, but current RaidType is %v = !", localDisk.Spec.RAIDInfo.RaidType)
+	// 		m.rdhandler.SetErrMsg(err)
+	// 		return errors.NewBadRequest(err)
+	// 	}
 
-		if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateDgrd {
-			m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease localDisk.Spec.RAIDInfo.RaidState is RAIDStateDgrd.")
-			return nil
-		} else if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateOptl {
-			for _, raidDisk := range localDisk.Spec.RAIDInfo.RaidDiskList {
-				m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease raidDisk.DriveGroup = %v,replaceDisk.Spec.DriverGroup = %v", raidDisk.DriveGroup, replaceDisk.Spec.DriverGroup)
-				m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease raidDisk.SlotNo = %v,replaceDisk.Spec.SltId = %v", raidDisk.SlotNo, replaceDisk.Spec.SltId)
+	// 	if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateDgrd {
+	// 		m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease localDisk.Spec.RAIDInfo.RaidState is RAIDStateDgrd.")
+	// 		return nil
+	// 	} else if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateOptl {
+	// 		for _, raidDisk := range localDisk.Spec.RAIDInfo.RaidDiskList {
+	// 			m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease raidDisk.DriveGroup = %v,replaceDisk.Spec.DriverGroup = %v", raidDisk.DriveGroup, replaceDisk.Spec.DriverGroup)
+	// 			m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease raidDisk.SlotNo = %v,replaceDisk.Spec.SltId = %v", raidDisk.SlotNo, replaceDisk.Spec.SltId)
 
-				if raidDisk.DriveGroup == replaceDisk.Spec.DriverGroup && raidDisk.SlotNo == replaceDisk.Spec.SltId {
-					m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease string(raidDisk.RAIDDiskState) = %v", string(raidDisk.RAIDDiskState))
-					if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
-						warnMsg := fmt.Sprintf("Verify that the raidState is in a RAIDStateDgrd state, now the replaced disk is in a Rbld state，please plug old replaced disk !")
-						m.rdhandler.SetWarnMsg(warnMsg)
-						return errors.NewBadRequest(warnMsg)
-					}
-					if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateMissing)) {
-						warnMsg := fmt.Sprintf("Verify that the raidState is in a RAIDStateDgrd state, now the replaced disk is in a missing state，please plug old replaced disk !")
-						m.rdhandler.SetWarnMsg(warnMsg)
-						return errors.NewBadRequest(warnMsg)
-					}
-					if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOffln)) {
-						warnMsg := fmt.Sprintf("Verify that the hard disk is in a missing state, now the replaced disk is in a offline state，plz execute commands as follows !")
-						warnMsg += fmt.Sprintf("[1]. storcli /c<ctrlId>/e<EID>/s<Slt> set missing. \n")
-						warnMsg += fmt.Sprintf("After set missing, plug old replaced disk !")
-						m.rdhandler.SetWarnMsg(warnMsg)
-						return errors.NewBadRequest(warnMsg)
-					}
-					if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOnln)) {
-						warnMsg := fmt.Sprintf("Verify that the hard disk is in a missing state, now the replaced disk is in a online state，plz execute commands as follows !")
-						warnMsg += fmt.Sprintf("[1]. storcli /c<ctrlId>/e<EID>/s<Slt> set offline \n !")
-						warnMsg += fmt.Sprintf("[2]. storcli /c<ctrlId>/e<EID>/s<Slt> set missing !")
-						m.rdhandler.SetWarnMsg(warnMsg)
-						return errors.NewBadRequest(warnMsg)
-					}
-				}
-			}
-		} else {
-			errMsg := fmt.Sprintf("Unknown RaidState %v !", localDisk.Spec.RAIDInfo.RaidState)
-			m.rdhandler.SetErrMsg(errMsg)
-			return errors.NewBadRequest(errMsg)
-		}
-	}
+	// 			if raidDisk.DriveGroup == replaceDisk.Spec.DriverGroup && raidDisk.SlotNo == replaceDisk.Spec.SltId {
+	// 				m.logger.Debug("processOldReplaceDiskStatusWaitDiskLVMRelease string(raidDisk.RAIDDiskState) = %v", string(raidDisk.RAIDDiskState))
+	// 				if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
+	// 					warnMsg := fmt.Sprintf("Verify that the raidState is in a RAIDStateDgrd state, now the replaced disk is in a Rbld state，please plug old replaced disk !")
+	// 					m.rdhandler.SetWarnMsg(warnMsg)
+	// 					return errors.NewBadRequest(warnMsg)
+	// 				}
+	// 				if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateMissing)) {
+	// 					warnMsg := fmt.Sprintf("Verify that the raidState is in a RAIDStateDgrd state, now the replaced disk is in a missing state，please plug old replaced disk !")
+	// 					m.rdhandler.SetWarnMsg(warnMsg)
+	// 					return errors.NewBadRequest(warnMsg)
+	// 				}
+	// 				if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOffln)) {
+	// 					warnMsg := fmt.Sprintf("Verify that the hard disk is in a missing state, now the replaced disk is in a offline state，plz execute commands as follows !")
+	// 					warnMsg += fmt.Sprintf("[1]. storcli /c<ctrlId>/e<EID>/s<Slt> set missing. \n")
+	// 					warnMsg += fmt.Sprintf("After set missing, plug old replaced disk !")
+	// 					m.rdhandler.SetWarnMsg(warnMsg)
+	// 					return errors.NewBadRequest(warnMsg)
+	// 				}
+	// 				if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOnln)) {
+	// 					warnMsg := fmt.Sprintf("Verify that the hard disk is in a missing state, now the replaced disk is in a online state，plz execute commands as follows !")
+	// 					warnMsg += fmt.Sprintf("[1]. storcli /c<ctrlId>/e<EID>/s<Slt> set offline \n !")
+	// 					warnMsg += fmt.Sprintf("[2]. storcli /c<ctrlId>/e<EID>/s<Slt> set missing !")
+	// 					m.rdhandler.SetWarnMsg(warnMsg)
+	// 					return errors.NewBadRequest(warnMsg)
+	// 				}
+	// 			}
+	// 		}
+	// 	} else {
+	// 		errMsg := fmt.Sprintf("Unknown RaidState %v !", localDisk.Spec.RAIDInfo.RaidState)
+	// 		m.rdhandler.SetErrMsg(errMsg)
+	// 		return errors.NewBadRequest(errMsg)
+	// 	}
+	// }
 
 	diskType := localDisk.Spec.DiskAttributes.Type
 	volGroupName, err := utils.GetPoolNameAccordingDiskType(diskType)
@@ -513,7 +515,7 @@ func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *api
 
 	var options []string
 	ctx := context.TODO()
-	nodeList := &lsapisv1alpha1.LocalStorageNodeList{}
+	nodeList := &hwameistorv1alpha1.LocalStorageNodeList{}
 	if err := m.apiClient.List(ctx, nodeList); err != nil {
 		m.logger.WithError(err).Error("Failed to get NodeList")
 		return err
@@ -548,7 +550,7 @@ func (m *manager) processOldReplaceDiskStatusWaitDiskLVMRelease(replaceDisk *api
 	//	return err1
 	//}
 
-	ldhandler.SetupStatus(ldm.LocalDiskReleased)
+	ldhandler.SetupStatus(hwameistorv1alpha1.LocalDiskReleased)
 	if err := m.ldhandler.UpdateStatus(); err != nil {
 		log.WithError(err).Errorf("Update LocalDisk %v status fail", localDisk.Name)
 		return err
@@ -604,36 +606,36 @@ func (m *manager) waitDiskLVMRejoinDone(replaceDisk *apisv1alpha1.ReplaceDisk) e
 			return err
 		}
 
-		if localDisk.Spec.HasRAID == true {
-			m.logger.Debug("waitDiskLVMRejoinDone localDisk.Spec.HasRAID is true.")
+		// if localDisk.Spec.HasRAID == true {
+		// 	m.logger.Debug("waitDiskLVMRejoinDone localDisk.Spec.HasRAID is true.")
 
-			if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateDgrd {
-				m.logger.Debug("waitDiskLVMRejoinDone localDisk.Spec.RAIDInfo.RaidState is RAIDStateDgrd.")
-				for _, raidDisk := range localDisk.Spec.RAIDInfo.RaidDiskList {
-					if raidDisk.DriveGroup == replaceDisk.Spec.DriverGroup && raidDisk.SlotNo == replaceDisk.Spec.SltId {
-						if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
-							warnMsg := fmt.Sprintf("Now the replaced disk is in a RAIDDiskStateRbld state, wait for it rebuilded complete !")
-							m.rdhandler.SetWarnMsg(warnMsg)
-							break
-						} else if !strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOffln)) {
-							errMsg := fmt.Sprintf("waitDiskLVMRejoinDone raidDisk.RAIDDiskState should be RAIDDiskStateRbld or RAIDDiskStateOffln now raidDisk.RAIDDiskState is %v !", raidDisk.RAIDDiskState)
-							m.rdhandler.SetErrMsg(errMsg)
-							return errors.NewBadRequest(errMsg)
-						}
-					}
-				}
-			} else if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateOptl {
-				break
-			} else {
-				errMsg := fmt.Sprintf("waitDiskLVMRejoinDone Unknown RaidState %v !", localDisk.Spec.RAIDInfo.RaidState)
-				m.rdhandler.SetErrMsg(errMsg)
-				return errors.NewBadRequest(errMsg)
-			}
-			continue
-		}
+		// 	if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateDgrd {
+		// 		m.logger.Debug("waitDiskLVMRejoinDone localDisk.Spec.RAIDInfo.RaidState is RAIDStateDgrd.")
+		// 		for _, raidDisk := range localDisk.Spec.RAIDInfo.RaidDiskList {
+		// 			if raidDisk.DriveGroup == replaceDisk.Spec.DriverGroup && raidDisk.SlotNo == replaceDisk.Spec.SltId {
+		// 				if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
+		// 					warnMsg := fmt.Sprintf("Now the replaced disk is in a RAIDDiskStateRbld state, wait for it rebuilded complete !")
+		// 					m.rdhandler.SetWarnMsg(warnMsg)
+		// 					break
+		// 				} else if !strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOffln)) {
+		// 					errMsg := fmt.Sprintf("waitDiskLVMRejoinDone raidDisk.RAIDDiskState should be RAIDDiskStateRbld or RAIDDiskStateOffln now raidDisk.RAIDDiskState is %v !", raidDisk.RAIDDiskState)
+		// 					m.rdhandler.SetErrMsg(errMsg)
+		// 					return errors.NewBadRequest(errMsg)
+		// 				}
+		// 			}
+		// 		}
+		// 	} else if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateOptl {
+		// 		break
+		// 	} else {
+		// 		errMsg := fmt.Sprintf("waitDiskLVMRejoinDone Unknown RaidState %v !", localDisk.Spec.RAIDInfo.RaidState)
+		// 		m.rdhandler.SetErrMsg(errMsg)
+		// 		return errors.NewBadRequest(errMsg)
+		// 	}
+		// 	continue
+		// }
 
 		m.logger.WithError(err).Errorf("waitDiskLVMRejoinDone getLocalDiskByDiskName localDisk.Status.State = %v, retryNums = %v", localDisk.Status.State, retryNums)
-		if localDisk.Status.State == ldm.LocalDiskClaimed {
+		if localDisk.Status.State == hwameistorv1alpha1.LocalDiskClaimed {
 			break
 		}
 
@@ -659,34 +661,34 @@ func (m *manager) processNewReplaceDiskStatusWaitDataBackup(replaceDisk *apisv1a
 		return errs.New("processNewReplaceDiskStatusWaitDataBackup replaceDisk is nil")
 	}
 
-	oldDiskName, err := m.getDiskNameByDiskUUID(replaceDisk.Spec.OldUUID, replaceDisk.Spec.NodeName)
-	if err != nil {
-		m.logger.Errorf("processNewReplaceDiskStatusWaitDataBackup getDiskNameByDiskUUID failed err = %v", err)
-		return err
-	}
+	// oldDiskName, err := m.getDiskNameByDiskUUID(replaceDisk.Spec.OldUUID, replaceDisk.Spec.NodeName)
+	// if err != nil {
+	// 	m.logger.Errorf("processNewReplaceDiskStatusWaitDataBackup getDiskNameByDiskUUID failed err = %v", err)
+	// 	return err
+	// }
 
-	oldLocalDisk, err := m.getLocalDiskByDiskName(oldDiskName, replaceDisk.Spec.NodeName)
-	if err != nil {
-		m.logger.WithError(err).Error("processNewReplaceDiskStatusWaitDataBackup: Failed to getLocalDiskByDiskName")
-		return err
-	}
+	// oldLocalDisk, err := m.getLocalDiskByDiskName(oldDiskName, replaceDisk.Spec.NodeName)
+	// if err != nil {
+	// 	m.logger.WithError(err).Error("processNewReplaceDiskStatusWaitDataBackup: Failed to getLocalDiskByDiskName")
+	// 	return err
+	// }
 
 	// directly replacedisk ; no data backup
-	if oldLocalDisk.Spec.HasRAID == true {
-		m.logger.Debug("processNewReplaceDiskStatusWaitDataBackup oldLocalDisk.Spec.HasRAID is true.")
-		if oldLocalDisk.Spec.RAIDInfo.RaidType != ldm.RaidType5 {
-			err := fmt.Sprintf("Now ReplaceDiskTask only support RaidType5, but current RaidType is %v = !", oldLocalDisk.Spec.RAIDInfo.RaidType)
-			m.rdhandler.SetErrMsg(err)
-			return errors.NewBadRequest(err)
-		}
-		return nil
-	}
+	// if oldLocalDisk.Spec.HasRAID == true {
+	// 	m.logger.Debug("processNewReplaceDiskStatusWaitDataBackup oldLocalDisk.Spec.HasRAID is true.")
+	// 	if oldLocalDisk.Spec.RAIDInfo.RaidType != ldm.RaidType5 {
+	// 		err := fmt.Sprintf("Now ReplaceDiskTask only support RaidType5, but current RaidType is %v = !", oldLocalDisk.Spec.RAIDInfo.RaidType)
+	// 		m.rdhandler.SetErrMsg(err)
+	// 		return errors.NewBadRequest(err)
+	// 	}
+	// 	return nil
+	// }
 
 	migrateLocalVolumes := replaceDisk.Status.MigrateVolumeNames
-	var localVolumeList []lsapisv1alpha1.LocalVolume
+	var localVolumeList []hwameistorv1alpha1.LocalVolume
 	m.logger.Debug("processNewReplaceDiskStatusWaitDataBackup migrateLocalVolumes = %v", migrateLocalVolumes)
 	for _, localVolumeName := range migrateLocalVolumes {
-		vol := &lsapisv1alpha1.LocalVolume{}
+		vol := &hwameistorv1alpha1.LocalVolume{}
 		if err := m.apiClient.Get(context.TODO(), types.NamespacedName{Name: localVolumeName}, vol); err != nil {
 			if !errors.IsNotFound(err) {
 				log.Errorf("Failed to get Volume from cache, retry it later ...")
@@ -703,7 +705,7 @@ func (m *manager) processNewReplaceDiskStatusWaitDataBackup(replaceDisk *apisv1a
 		localVolumeList = append(localVolumeList, *vol)
 	}
 
-	err = m.waitMigrateTaskByLocalVolumeDone(localVolumeList, MigrateType_BackUp)
+	err := m.waitMigrateTaskByLocalVolumeDone(localVolumeList, MigrateType_BackUp)
 	if err != nil {
 		m.logger.WithError(err).Error("processNewReplaceDiskStatusWaitDataBackup: Failed to waitMigrateTaskByLocalVolumeDone")
 		return err
@@ -752,10 +754,10 @@ func (m *manager) processNewReplaceDiskStatusFailed(replaceDisk *apisv1alpha1.Re
 	return nil
 }
 
-func (m *manager) getAllLocalVolumeAndReplicasMapOnDisk(diskName, nodeName string) (map[string][]*lsapisv1alpha1.LocalVolumeReplica, error) {
+func (m *manager) getAllLocalVolumeAndReplicasMapOnDisk(diskName, nodeName string) (map[string][]*hwameistorv1alpha1.LocalVolumeReplica, error) {
 	m.logger.Debug("getAllLocalVolumeAndReplicasMapOnDisk start ... ")
 
-	replicaList := &lsapisv1alpha1.LocalVolumeReplicaList{}
+	replicaList := &hwameistorv1alpha1.LocalVolumeReplicaList{}
 	if err := m.apiClient.List(context.TODO(), replicaList); err != nil {
 		if errors.IsNotFound(err) {
 			return nil, nil
@@ -763,7 +765,7 @@ func (m *manager) getAllLocalVolumeAndReplicasMapOnDisk(diskName, nodeName strin
 		return nil, err
 	}
 
-	localVolumeReplicasMap := make(map[string][]*lsapisv1alpha1.LocalVolumeReplica)
+	localVolumeReplicasMap := make(map[string][]*hwameistorv1alpha1.LocalVolumeReplica)
 	for _, replica := range replicaList.Items {
 		if replica.Spec.NodeName != nodeName {
 			continue
@@ -773,7 +775,7 @@ func (m *manager) getAllLocalVolumeAndReplicasMapOnDisk(diskName, nodeName strin
 			if dName == diskName {
 				replicas, ok := localVolumeReplicasMap[replica.Spec.VolumeName]
 				if !ok {
-					var replicaList []*lsapisv1alpha1.LocalVolumeReplica
+					var replicaList []*hwameistorv1alpha1.LocalVolumeReplica
 					replicaList = append(replicaList, &replica)
 					localVolumeReplicasMap[replica.Spec.VolumeName] = replicaList
 				} else {
@@ -804,7 +806,7 @@ func (m *manager) CheckVolumeInReplaceDiskTask(nodeName, volName string) (bool, 
 	return false, nil
 }
 
-func (m *manager) getAllLocalVolumesAndReplicasInRepalceDiskTask(nodeName string) (map[string][]*lsapisv1alpha1.LocalVolumeReplica, error) {
+func (m *manager) getAllLocalVolumesAndReplicasInRepalceDiskTask(nodeName string) (map[string][]*hwameistorv1alpha1.LocalVolumeReplica, error) {
 	m.logger.Debug("getAllLocalVolumesAndReplicasInRepalceDiskTask start ... ")
 
 	diskNames, err := m.getDiskNamesInRepalceDiskTask(nodeName)
@@ -813,7 +815,7 @@ func (m *manager) getAllLocalVolumesAndReplicasInRepalceDiskTask(nodeName string
 		return nil, err
 	}
 
-	var allLocalVolumeReplicasMap = make(map[string][]*lsapisv1alpha1.LocalVolumeReplica)
+	var allLocalVolumeReplicasMap = make(map[string][]*hwameistorv1alpha1.LocalVolumeReplica)
 	for _, diskName := range diskNames {
 		localVolumeReplicasMap, err := m.getAllLocalVolumeAndReplicasMapOnDisk(diskName, nodeName)
 		if err != nil {
@@ -879,7 +881,7 @@ func (m *manager) CheckLocalDiskInReplaceDiskTaskByUUID(nodeName, diskUuid strin
 // start with /dev/sdx
 func (m *manager) getDiskNameByDiskUUID(diskUUID, nodeName string) (string, error) {
 	var recorder record.EventRecorder
-	ldHandler := localdisk.NewLocalDiskHandler(m.apiClient, recorder)
+	ldHandler := localdiskhandler.NewLocalDiskHandler(m.apiClient, recorder)
 	ldList, err := ldHandler.ListLocalDisk()
 	if err != nil {
 		return "", err
@@ -915,46 +917,46 @@ func (m *manager) updateLocalDisk(replaceDisk *apisv1alpha1.ReplaceDisk) error {
 		return err
 	}
 
-	if localDisk.Spec.HasRAID == true {
-		m.logger.Debug("updateLocalDisk localDisk.Spec.HasRAID is true.")
+	// if localDisk.Spec.HasRAID == true {
+	// 	m.logger.Debug("updateLocalDisk localDisk.Spec.HasRAID is true.")
 
-		if localDisk.Spec.RAIDInfo.RaidType != ldm.RaidType5 {
-			err := fmt.Sprintf("updateLocalDisk RaidType should be RaidType5, now RaidType is %v = !", localDisk.Spec.RAIDInfo.RaidType)
-			m.rdhandler.SetErrMsg(err)
-			return errors.NewBadRequest(err)
-		}
+	// 	if localDisk.Spec.RAIDInfo.RaidType != ldm.RaidType5 {
+	// 		err := fmt.Sprintf("updateLocalDisk RaidType should be RaidType5, now RaidType is %v = !", localDisk.Spec.RAIDInfo.RaidType)
+	// 		m.rdhandler.SetErrMsg(err)
+	// 		return errors.NewBadRequest(err)
+	// 	}
 
-		if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateDgrd {
-			m.logger.Debug("updateLocalDisk localDisk.Spec.RAIDInfo.RaidState is RAIDStateDgrd.")
-			for _, raidDisk := range localDisk.Spec.RAIDInfo.RaidDiskList {
-				if raidDisk.DriveGroup == replaceDisk.Spec.DriverGroup && raidDisk.SlotNo == replaceDisk.Spec.SltId {
-					if raidDisk.DriveGroup == "F" {
-						warnMsg := fmt.Sprintf("Please delete foreign configuration as follow command : `storcli /c<ctrlId>/fall delete` ! \n")
-						m.rdhandler.SetWarnMsg(warnMsg)
-						return errors.NewBadRequest(warnMsg)
-					}
-					if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOffln)) {
-						warnMsg := fmt.Sprintf("Insert new replaced disk into slt %v of current raid !", raidDisk.SlotNo)
-						m.rdhandler.SetWarnMsg(warnMsg)
-						return errors.NewBadRequest(warnMsg)
-					}
-					if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
-						break
-					}
-					continue
-				}
-			}
-			return nil
-		} else if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateOptl {
-			m.rdhandler.SetWarnMsg("")
-			return nil
-		}
+	// 	if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateDgrd {
+	// 		m.logger.Debug("updateLocalDisk localDisk.Spec.RAIDInfo.RaidState is RAIDStateDgrd.")
+	// 		for _, raidDisk := range localDisk.Spec.RAIDInfo.RaidDiskList {
+	// 			if raidDisk.DriveGroup == replaceDisk.Spec.DriverGroup && raidDisk.SlotNo == replaceDisk.Spec.SltId {
+	// 				if raidDisk.DriveGroup == "F" {
+	// 					warnMsg := fmt.Sprintf("Please delete foreign configuration as follow command : `storcli /c<ctrlId>/fall delete` ! \n")
+	// 					m.rdhandler.SetWarnMsg(warnMsg)
+	// 					return errors.NewBadRequest(warnMsg)
+	// 				}
+	// 				if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateOffln)) {
+	// 					warnMsg := fmt.Sprintf("Insert new replaced disk into slt %v of current raid !", raidDisk.SlotNo)
+	// 					m.rdhandler.SetWarnMsg(warnMsg)
+	// 					return errors.NewBadRequest(warnMsg)
+	// 				}
+	// 				if strings.Contains(string(raidDisk.RAIDDiskState), string(ldm.RAIDDiskStateRbld)) {
+	// 					break
+	// 				}
+	// 				continue
+	// 			}
+	// 		}
+	// 		return nil
+	// 	} else if localDisk.Spec.RAIDInfo.RaidState == ldm.RAIDStateOptl {
+	// 		m.rdhandler.SetWarnMsg("")
+	// 		return nil
+	// 	}
 
-		errMsg := fmt.Sprintf("updateLocalDisk Unknown RaidState %v !", localDisk.Spec.RAIDInfo.RaidState)
-		m.rdhandler.SetErrMsg(errMsg)
-		return errors.NewBadRequest(errMsg)
+	// 	errMsg := fmt.Sprintf("updateLocalDisk Unknown RaidState %v !", localDisk.Spec.RAIDInfo.RaidState)
+	// 	m.rdhandler.SetErrMsg(errMsg)
+	// 	return errors.NewBadRequest(errMsg)
 
-	}
+	// }
 
 	localDisk.Spec.DiskAttributes.Product = ReplaceDiskKind + strconv.Itoa(rand.Intn(1000))
 	err = m.localDiskController.UpdateLocalDisk(localDisk)
