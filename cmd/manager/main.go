@@ -15,8 +15,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	ldmv1alpha1 "github.com/hwameistor/local-disk-manager/pkg/apis"
-	apisv1alpha1 "github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1"
+	ldmv1alpha1 "github.com/hwameistor/hwameistor/pkg/apis/hwameistor/v1alpha1"
+	apisv1alpha1 "github.com/hwameistor/hwameistor/pkg/apis/hwameistor/v1alpha1"
 	"github.com/hwameistor/reliable-helper-system/pkg/apis"
 	"github.com/hwameistor/reliable-helper-system/pkg/controller"
 	replacediskmanager "github.com/hwameistor/reliable-helper-system/pkg/replacedisk/manager"

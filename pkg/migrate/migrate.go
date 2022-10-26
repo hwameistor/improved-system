@@ -7,7 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 
-	lsapisv1alpha1 "github.com/hwameistor/local-storage/pkg/apis/hwameistor/v1alpha1"
+	hwameistorv1alpha1 "github.com/hwameistor/hwameistor/pkg/apis/hwameistor/v1alpha1"
 	"github.com/hwameistor/reliable-helper-system/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	crmanager "sigs.k8s.io/controller-runtime/pkg/manager"
@@ -35,19 +35,19 @@ func NewController(mgr crmanager.Manager) Controller {
 }
 
 // CreateLocalVolumeMigrate
-func (ctr Controller) CreateLocalVolumeMigrate(lvm lsapisv1alpha1.LocalVolumeMigrate) error {
+func (ctr Controller) CreateLocalVolumeMigrate(lvm hwameistorv1alpha1.LocalVolumeMigrate) error {
 	log.Debugf("Create LocalVolumeMigrate lvm %+v", lvm)
 
 	return ctr.mgr.GetClient().Create(context.Background(), &lvm)
 }
 
 // UpdateLocalVolumeMigrate
-func (ctr Controller) UpdateLocalVolumeMigrate(lvm lsapisv1alpha1.LocalVolumeMigrate) error {
+func (ctr Controller) UpdateLocalVolumeMigrate(lvm hwameistorv1alpha1.LocalVolumeMigrate) error {
 	return ctr.mgr.GetClient().Update(context.Background(), lvm.DeepCopy())
 }
 
 // IsAlreadyExist
-func (ctr Controller) IsAlreadyExist(lvm lsapisv1alpha1.LocalVolumeMigrate) bool {
+func (ctr Controller) IsAlreadyExist(lvm hwameistorv1alpha1.LocalVolumeMigrate) bool {
 	key := client.ObjectKey{Name: lvm.GetName(), Namespace: lvm.Namespace}
 	if lookLd, err := ctr.GetLocalVolumeMigrate(key); err != nil {
 		return false
@@ -57,10 +57,10 @@ func (ctr Controller) IsAlreadyExist(lvm lsapisv1alpha1.LocalVolumeMigrate) bool
 }
 
 // GetLocalVolumeMigrate
-func (ctr Controller) GetLocalVolumeMigrate(key client.ObjectKey) (lsapisv1alpha1.LocalVolumeMigrate, error) {
+func (ctr Controller) GetLocalVolumeMigrate(key client.ObjectKey) (hwameistorv1alpha1.LocalVolumeMigrate, error) {
 	log.Debugf("GetLocalVolumeMigrate key = %+v", key)
 
-	lvm := lsapisv1alpha1.LocalVolumeMigrate{}
+	lvm := hwameistorv1alpha1.LocalVolumeMigrate{}
 	if err := ctr.mgr.GetClient().Get(context.Background(), key, &lvm); err != nil {
 		if errors.IsNotFound(err) {
 			return lvm, nil
@@ -71,10 +71,10 @@ func (ctr Controller) GetLocalVolumeMigrate(key client.ObjectKey) (lsapisv1alpha
 	return lvm, nil
 }
 
-func (ctr Controller) GetLocalVolumeMigrateStatusByLocalVolume(vol lsapisv1alpha1.LocalVolume) (lsapisv1alpha1.LocalVolumeMigrateStatus, error) {
+func (ctr Controller) GetLocalVolumeMigrateStatusByLocalVolume(vol hwameistorv1alpha1.LocalVolume) (hwameistorv1alpha1.LocalVolumeMigrateStatus, error) {
 	log.Debugf("GetLocalVolumeMigrateStatusByLocalVolume vol = %+v", vol)
 
-	var localVolumeMigrateStatus lsapisv1alpha1.LocalVolumeMigrateStatus
+	var localVolumeMigrateStatus hwameistorv1alpha1.LocalVolumeMigrateStatus
 
 	migrateName := ctr.genLocalVolumeMigrateName(vol)
 	key := client.ObjectKey{Name: migrateName, Namespace: vol.Namespace}
@@ -89,10 +89,10 @@ func (ctr Controller) GetLocalVolumeMigrateStatusByLocalVolume(vol lsapisv1alpha
 }
 
 // GetLocalVolumeMigrateStatus
-func (ctr Controller) GetLocalVolumeMigrateStatus(key client.ObjectKey) (lsapisv1alpha1.LocalVolumeMigrateStatus, error) {
+func (ctr Controller) GetLocalVolumeMigrateStatus(key client.ObjectKey) (hwameistorv1alpha1.LocalVolumeMigrateStatus, error) {
 	log.Debugf("GetLocalVolumeMigrateStatus key = %+v", key)
 
-	var localVolumeMigrateStatus lsapisv1alpha1.LocalVolumeMigrateStatus
+	var localVolumeMigrateStatus hwameistorv1alpha1.LocalVolumeMigrateStatus
 	lvm, err := ctr.GetLocalVolumeMigrate(key)
 	if err != nil {
 		log.Errorf("Failed to GetLocalVolumeMigrateStatus")
@@ -104,7 +104,7 @@ func (ctr Controller) GetLocalVolumeMigrateStatus(key client.ObjectKey) (lsapisv
 }
 
 // ConstructLocalVolumeMigrate
-func (ctr Controller) ConstructLocalVolumeMigrate(vol lsapisv1alpha1.LocalVolume) (*lsapisv1alpha1.LocalVolumeMigrate, error) {
+func (ctr Controller) ConstructLocalVolumeMigrate(vol hwameistorv1alpha1.LocalVolume) (*hwameistorv1alpha1.LocalVolumeMigrate, error) {
 	log.Debugf("ConstructLocalVolumeMigrate vol = %+v", vol)
 	selectedMigratedNodeName, err := ctr.genLocalVolumeNodeName(vol)
 	if err != nil {
@@ -112,7 +112,7 @@ func (ctr Controller) ConstructLocalVolumeMigrate(vol lsapisv1alpha1.LocalVolume
 		return nil, err
 	}
 
-	var lvm = &lsapisv1alpha1.LocalVolumeMigrate{}
+	var lvm = &hwameistorv1alpha1.LocalVolumeMigrate{}
 
 	lvm.TypeMeta = metav1.TypeMeta{
 		Kind:       LocalVolumeMigrateKind,
@@ -131,9 +131,9 @@ func (ctr Controller) ConstructLocalVolumeMigrate(vol lsapisv1alpha1.LocalVolume
 }
 
 // GenLocalVolumeMigrateNodeName
-func (ctr Controller) genLocalVolumeNodeName(vol lsapisv1alpha1.LocalVolume) (string, error) {
+func (ctr Controller) genLocalVolumeNodeName(vol hwameistorv1alpha1.LocalVolume) (string, error) {
 	log.Debugf("genLocalVolumeNodeName vol = %+v", vol)
-	nodeList := &lsapisv1alpha1.LocalStorageNodeList{}
+	nodeList := &hwameistorv1alpha1.LocalStorageNodeList{}
 	if err := ctr.mgr.GetClient().List(context.Background(), nodeList); err != nil {
 		log.Errorf("Failed to get NodeList")
 		return "", err
@@ -157,21 +157,23 @@ func (ctr Controller) genLocalVolumeNodeName(vol lsapisv1alpha1.LocalVolume) (st
 	return selectedMigrateNode, nil
 }
 
-func (ctr Controller) genLocalVolumeMigrateSpec(lvm *lsapisv1alpha1.LocalVolumeMigrate, nodeName string) lsapisv1alpha1.LocalVolumeMigrateSpec {
+func (ctr Controller) genLocalVolumeMigrateSpec(lvm *hwameistorv1alpha1.LocalVolumeMigrate, nodeName string) hwameistorv1alpha1.LocalVolumeMigrateSpec {
 	log.Debugf("genLocalVolumeMigrateSpec lvm = %+v, nodeName = %+v", lvm, nodeName)
 
-	var localVolumeMigrate = lsapisv1alpha1.LocalVolumeMigrateSpec{}
+	var localVolumeMigrate = hwameistorv1alpha1.LocalVolumeMigrateSpec{}
 	splits := strings.Split(lvm.Name, "-")
 	var localVolumeName = "default"
 	if len(splits) >= 2 {
 		localVolumeName = strings.Split(lvm.Name, "--")[1]
 	}
 	localVolumeMigrate.VolumeName = localVolumeName
-	localVolumeMigrate.NodeName = nodeName
+	// localVolumeMigrate.NodeName = nodeName
+	localVolumeMigrate.TargetNodesSuggested = []string{nodeName}
+	localVolumeMigrate.SourceNode = ctr.NodeName
 	return localVolumeMigrate
 }
 
-func (ctr Controller) genLocalVolumeMigrateName(vol lsapisv1alpha1.LocalVolume) string {
+func (ctr Controller) genLocalVolumeMigrateName(vol hwameistorv1alpha1.LocalVolume) string {
 	if len(vol.Spec.Accessibility.Nodes) == 0 {
 		return ctr.NodeName + "--" + vol.Name
 	}
